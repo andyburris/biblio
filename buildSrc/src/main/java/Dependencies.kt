@@ -8,7 +8,7 @@ object Versions {
     const val activity = "1.4.0"
     const val serialization = "1.2.2"
     const val ktor = "1.6.1"
-    const val readium = "2.1.1"
+    const val readium = "develop-SNAPSHOT"
 }
 
 object Dependencies {
