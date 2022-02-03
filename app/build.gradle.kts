@@ -52,11 +52,12 @@ dependencies {
     implementation("androidx.compose.ui:ui:${Versions.compose}")
     implementation("androidx.compose.material:material:${Versions.compose}")
     implementation("androidx.compose.ui:ui-tooling-preview:${Versions.compose}")
+    implementation(Dependencies.Compose.icons)
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.4.0")
     implementation("androidx.activity:activity-compose:1.4.0")
     implementation(Dependencies.Readium.shared)
     implementation(Dependencies.Readium.streamer)
-    implementation(Dependencies.Readium.navigator)
+    //implementation(Dependencies.Readium.navigator)
     implementation(Dependencies.Readium.opds)
     implementation(Dependencies.Readium.lcp)
 
