@@ -1,32 +1,23 @@
 package com.andb.apps.biblio.ui.home
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
-import android.os.BatteryManager
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,64 +25,83 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
+import com.andb.apps.biblio.BuildConfig
+import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.ButtonStyle
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import org.readium.r2.shared.publication.Publication
-import org.readium.r2.shared.util.getOrElse
-import org.readium.r2.shared.util.toAbsoluteUrl
 import java.text.SimpleDateFormat
-import java.util.Date
 
+sealed class BooksState {
+    data object Loading : BooksState()
+    data object NoPermission : BooksState()
+    data class Loaded(val books: List<Publication>) : BooksState()
+}
+
+val RETURN_URI = Uri.parse("package:${BuildConfig.APPLICATION_ID}")
+
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomePage(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToApps: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val readium = remember { ReadiumUtils(context) }
-    val openPublication = remember { mutableStateOf<Publication?>(null) }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if(uri == null) return@rememberLauncherForActivityResult
-        val url = requireNotNull(uri.toAbsoluteUrl())
-        coroutineScope.launch {
-            val asset = readium.assetRetriever.retrieve(url)
-                .getOrElse {
-                    return@launch
-                }
-
-            val publication = readium.publicationOpener.open(asset, allowUserInteraction = false)
-                .getOrElse {
-                    asset.close()
-                    return@launch
-                }
-            Log.d("HomePage", "Publication toc: ${publication.manifest.tableOfContents}")
-            Log.d("HomePage", "Publication context: ${publication.manifest.context}")
-            Log.d("HomePage", "Publication resources: ${publication.manifest.resources}")
-            Log.d("HomePage", "Publication readingOrder: ${publication.manifest.readingOrder}")
-            Log.d("HomePage", "Publication metadata: ${publication.metadata}")
-            openPublication.value = publication
+    val bookRepository = remember { BookRepository(readium) }
+    val allBooks = remember { mutableStateOf<BooksState>(BooksState.Loading) }
+    LaunchedEffect(Unit) {
+        if (!Environment.isExternalStorageManager()) {
+            allBooks.value = BooksState.NoPermission
+        } else {
+            allBooks.value = bookRepository.getPublications().let { BooksState.Loaded(it) }
         }
     }
 
-
     Column(modifier = modifier.fillMaxSize()) {
-        Box(
+        Column(
             Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.Center,
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when(val publication = openPublication.value) {
-                null -> Button(onClick = { launcher.launch(arrayOf("*/*")) }) {
-                    Text(text = "Open eBook")
+            when(val publications = allBooks.value) {
+                BooksState.Loading -> Text(
+                    modifier = Modifier.padding(64.dp),
+                    text = "Loading...",
+                )
+                BooksState.NoPermission -> Column(
+                    modifier = Modifier.padding(64.dp)
+                ) {
+                    Text(text = "Biblio needs storage permissions to access your books")
+                    BiblioButton(
+                        onClick = {
+                            Log.d("HomePage", "Requesting storage permissions")
+                            context.startActivity(
+                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, RETURN_URI)
+                            )
+                        },
+                        style = ButtonStyle.Outline,
+                    ) {
+                        Text(text = "Allow storage permissions")
+                    }
                 }
-                else -> {
-                    BookItem(publication = publication, Modifier.clickable { openPublication.value = null })
+                is BooksState.Loaded -> when(publications.books.isNotEmpty()) {
+                    true -> LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(32.dp),
+                        contentPadding = PaddingValues(horizontal = 64.dp)
+                    ) {
+                        items(publications.books) { book ->
+                            BookItem(publication = book)
+                        }
+                    }
+                    false -> Text(text = "No books found")
                 }
             }
         }
@@ -117,7 +127,7 @@ fun HomePage(
             Spacer(modifier = Modifier.weight(1f))
 
             BiblioButton(
-                onClick = { /*TODO*/ },
+                onClick = onNavigateToApps,
                 style = ButtonStyle.Outline,
             ) {
                 Text(text = "Apps")

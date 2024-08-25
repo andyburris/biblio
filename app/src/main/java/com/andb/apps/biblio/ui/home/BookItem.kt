@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.paint
@@ -103,7 +105,7 @@ fun BookItem(
                 .skew(yDeg = 55.0)
                 .width(spineWidth)
                 .fillMaxHeight()
-                .defaultMinSize(minHeight = 24.dp)
+                .clip(RoundedCornerShape(bottomStart = 12.dp))
                 .then(when(val cover = potentialCovers.value) {
                     null -> Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                     else -> Modifier.drawBehind {
@@ -115,7 +117,7 @@ fun BookItem(
         Column() {
             val bg = MaterialTheme.colorScheme.background
             val bgSecondary = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-            val pageColors = (0 until (pages / 25)).flatMap { listOf(bg, bgSecondary) }
+            val pageColors = (0 until (pages / 40)).flatMap { listOf(bg, bgSecondary) }
             val pagesGradient = Brush.verticalGradient(pageColors)
             Box(
                 Modifier
