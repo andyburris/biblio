@@ -1,27 +1,25 @@
 package com.andb.apps.biblio.data
 
-import android.Manifest
-import android.content.Context
 import android.os.Environment
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.content.PermissionChecker.PERMISSION_GRANTED
 import com.andb.apps.biblio.ui.home.ReadiumUtils
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.util.getOrElse
-import org.readium.r2.shared.util.toAbsoluteUrl
-import org.readium.r2.shared.util.toUrl
 import java.io.File
 
 val ACCEPTED_EXTENSIONS = listOf("epub")
 val ROOT_DIR: String = Environment.getExternalStorageDirectory().absolutePath
+//val ROOT_DIR: String = "/sdcard"
 val ANDROID_DIR = File("$ROOT_DIR/Android")
 val DATA_DIR = File("$ROOT_DIR/data")
 
 class BookRepository(private val readium: ReadiumUtils) {
     suspend fun getPublications(): List<Publication> {
-        val files = File(ROOT_DIR).walk()
+        val root = File(ROOT_DIR)
+        val files = root.walk()
             // before entering this dir check if
             .onEnter {
                 !it.isHidden // it is not hidden
@@ -31,19 +29,22 @@ class BookRepository(private val readium: ReadiumUtils) {
             }.filter { ACCEPTED_EXTENSIONS.contains(it.extension) } // it is of accepted type
             .toList()
 
-        return files.map { file ->
-            val asset = readium.assetRetriever.retrieve(file)
-                .getOrElse {
-                    return@map null
-                }
+        return files
+            .map { file ->
+                CoroutineScope(Dispatchers.IO).async {
+                    val asset = readium.assetRetriever.retrieve(file)
+                        .getOrElse { return@async null }
 
-            val publication = readium.publicationOpener.open(asset, allowUserInteraction = false)
-                .getOrElse {
-                    asset.close()
-                    return@map null
+                    val publication = readium.publicationOpener.open(asset, allowUserInteraction = false)
+                        .getOrElse {
+                            asset.close()
+                            return@async null
+                        }
+                    publication
                 }
-
-            publication
-        }.filterNotNull()
+            }
+            .awaitAll()
+            .filterNotNull()
+            .distinctBy { listOf(it.metadata.title, it.metadata.authors) }
     }
 }

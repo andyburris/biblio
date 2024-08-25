@@ -1,26 +1,73 @@
 package com.andb.apps.biblio.ui.common
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonElevation
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 enum class ButtonStyle {
     Ghost, Outline,
 }
+
+@Composable
+fun BiblioButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    text: String? = null,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    style: ButtonStyle = ButtonStyle.Ghost,
+) {
+    BiblioButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        style = style,
+        contentPadding = PaddingValues(horizontal = 8.dp),
+    ) {
+        if(icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(when(style) {
+                    ButtonStyle.Ghost -> 20.dp
+                    ButtonStyle.Outline -> 16.dp
+                })
+            )
+        }
+        if (text != null) {
+            Text(
+                text = text,
+                style = when(style) {
+                    ButtonStyle.Outline -> BiblioTheme.typography.caption
+                    ButtonStyle.Ghost -> BiblioTheme.typography.body
+                },
+                // modifier = Modifier.border(1.dp, Color.Red),
+            )
+        }
+    }
+}
+
 @Composable
 fun BiblioButton(
     onClick: () -> Unit,
@@ -32,27 +79,36 @@ fun BiblioButton(
     content: @Composable RowScope.() -> Unit
 
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        shape = when(style){
-            ButtonStyle.Ghost -> RectangleShape
-            ButtonStyle.Outline -> CircleShape
-        },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.secondary,
-            disabledContentColor = MaterialTheme.colorScheme.tertiary,
-            disabledContainerColor = Color.Transparent,
-        ),
-        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-        border = when(style){
-            ButtonStyle.Ghost -> null
-            ButtonStyle.Outline -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        },
-        contentPadding = contentPadding,
-        interactionSource = interactionSource,
-        content = content
-    )
+    val shape = when(style){
+        ButtonStyle.Ghost -> RectangleShape
+        ButtonStyle.Outline -> CircleShape
+    }
+
+    CompositionLocalProvider(LocalContentColor provides BiblioTheme.colors.onBackgroundSecondary) {
+        Row(
+            modifier = modifier
+                .then(
+                    when (style) {
+                        ButtonStyle.Ghost -> Modifier
+                        ButtonStyle.Outline -> Modifier.border(
+                            1.dp,
+                            BiblioTheme.colors.divider,
+                            shape
+                        )
+                    }
+                )
+                .clip(shape)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClick = onClick,
+                )
+                .height(32.dp)
+                .padding(contentPadding),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
 }

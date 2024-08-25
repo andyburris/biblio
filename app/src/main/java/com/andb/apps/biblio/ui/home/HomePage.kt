@@ -2,6 +2,8 @@ package com.andb.apps.biblio.ui.home
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build.VERSION
+import android.os.Build.VERSION_CODES
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
@@ -20,11 +22,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Squaresfour
 import com.andb.apps.biblio.BuildConfig
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.ui.common.BiblioButton
@@ -35,6 +39,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import org.readium.r2.shared.publication.Publication
 import java.text.SimpleDateFormat
 
+
 sealed class BooksState {
     data object Loading : BooksState()
     data object NoPermission : BooksState()
@@ -42,6 +47,7 @@ sealed class BooksState {
 }
 
 val RETURN_URI = Uri.parse("package:${BuildConfig.APPLICATION_ID}")
+val needsExtraPermission = VERSION.SDK_INT > VERSION_CODES.Q
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -50,16 +56,21 @@ fun HomePage(
     onNavigateToApps: () -> Unit,
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val readium = remember { ReadiumUtils(context) }
+
+    val storagePermissionState = rememberPermissionState(permission = android.Manifest.permission.READ_EXTERNAL_STORAGE)
 
     val bookRepository = remember { BookRepository(readium) }
     val allBooks = remember { mutableStateOf<BooksState>(BooksState.Loading) }
     LaunchedEffect(Unit) {
-        if (!Environment.isExternalStorageManager()) {
-            allBooks.value = BooksState.NoPermission
-        } else {
-            allBooks.value = bookRepository.getPublications().let { BooksState.Loaded(it) }
+        val hasStoragePermission = when(needsExtraPermission) {
+            true -> Environment.isExternalStorageManager()
+            false -> storagePermissionState.status.isGranted
+        }
+
+        allBooks.value = when(hasStoragePermission) {
+            true -> bookRepository.getPublications().let { BooksState.Loaded(it) }
+            false -> BooksState.NoPermission
         }
     }
 
@@ -83,14 +94,14 @@ fun HomePage(
                     BiblioButton(
                         onClick = {
                             Log.d("HomePage", "Requesting storage permissions")
-                            context.startActivity(
-                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, RETURN_URI)
-                            )
+                            when(needsExtraPermission) {
+                                true -> context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, RETURN_URI))
+                                false -> storagePermissionState.launchPermissionRequest()
+                            }
                         },
                         style = ButtonStyle.Outline,
-                    ) {
-                        Text(text = "Allow storage permissions")
-                    }
+                        text = "Allow storage permissions",
+                    )
                 }
                 is BooksState.Loaded -> when(publications.books.isNotEmpty()) {
                     true -> LazyRow(
@@ -115,23 +126,22 @@ fun HomePage(
             val time = currentTimeAsState()
             val formatter = SimpleDateFormat("h:mm", java.util.Locale.ROOT)
             Text(text = formatter.format(time.value))
+            val batteryState = currentBatteryAsState()
 
             BiblioButton(
                 onClick = { /*TODO*/ },
                 style = ButtonStyle.Outline,
-            ) {
-                val batteryState = currentBatteryAsState()
-                Text(text = "${Math.round(batteryState.value.percent * 100)}%")
-            }
+                text = "${Math.round(batteryState.value.percent * 100)}%",
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
             BiblioButton(
                 onClick = onNavigateToApps,
                 style = ButtonStyle.Outline,
-            ) {
-                Text(text = "Apps")
-            }
+                text = "Apps",
+                icon = PhosphorIcons.Regular.Squaresfour
+            )
         }
     }
 }

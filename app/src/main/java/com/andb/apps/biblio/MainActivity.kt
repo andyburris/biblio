@@ -9,10 +9,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -37,7 +34,10 @@ class MainActivity : ComponentActivity() {
                     exitTransition = { ExitTransition.None },
                 ) {
                     composable("home") {
-                        Scaffold (Modifier.fillMaxSize()) { innerPadding ->
+                        Scaffold (
+                            Modifier.fillMaxSize(),
+                            containerColor = BiblioTheme.colors.background,
+                        ) { innerPadding ->
                             HomePage(
                                 modifier = Modifier.padding(innerPadding),
                                 onNavigateToApps = { navController.navigate("apps") }
@@ -45,7 +45,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     composable("apps") {
-                        Scaffold (Modifier.fillMaxSize()) { innerPadding ->
+                        Scaffold (
+                            Modifier.fillMaxSize(),
+                            containerColor = BiblioTheme.colors.background,
+                        ) { innerPadding ->
                             AppsPage(
                                 modifier = Modifier.padding(innerPadding),
                                 onNavigateBack = { navController.popBackStack() }
