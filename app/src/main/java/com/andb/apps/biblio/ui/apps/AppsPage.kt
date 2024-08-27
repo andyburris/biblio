@@ -7,9 +7,8 @@ import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,11 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import com.adamglin.PhosphorIcons
-import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.Arrowleft
-import com.andb.apps.biblio.ui.common.BiblioButton
-import com.andb.apps.biblio.ui.common.ButtonStyle
+import com.andb.apps.biblio.ui.common.BiblioBottomBar
+import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
@@ -40,10 +36,15 @@ fun AppsPage(modifier: Modifier = Modifier, onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val apps = appsAsState()
 
-    Column(modifier) {
+    BiblioScaffold(
+        modifier = modifier,
+        bottomBar = {
+            BiblioBottomBar(pageTitle = "Apps", onNavigateBack = onNavigateBack)
+        }
+    ) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(144.dp),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxSize(),
         ) {
             items(apps.value) { app ->
                 AppItem(
@@ -52,19 +53,6 @@ fun AppsPage(modifier: Modifier = Modifier, onNavigateBack: () -> Unit) {
                         launchApp(app, context)
                     })
             }
-        }
-        Row(
-            modifier = Modifier
-                .border(BiblioTheme.colors.divider, top = 1.dp)
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            BiblioButton(
-                onClick = onNavigateBack,
-                style = ButtonStyle.Ghost,
-                text = "Apps",
-                icon = PhosphorIcons.Regular.Arrowleft
-            )
         }
     }
 }
@@ -101,6 +89,7 @@ fun appsAsState(): State<List<App>> {
     val activities: List<ResolveInfo> =
         context.packageManager.queryIntentActivities(intent, 0)
     val installedApps = activities
+        .filter { resolveInfo -> resolveInfo.activityInfo.packageName != context.packageName }
         .map { resolveInfo ->
             App(
                 name = resolveInfo.loadLabel(context.packageManager).toString(),

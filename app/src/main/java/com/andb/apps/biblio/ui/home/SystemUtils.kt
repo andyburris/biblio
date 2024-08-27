@@ -30,11 +30,11 @@ fun currentTimeAsState(): State<Date> {
     return timeFlow.collectAsState()
 }
 
-data class BatteryState(val percent: Float, val isCharging: Boolean)
+data class BatteryState(val percent: Float?, val isCharging: Boolean)
 @Composable
 fun currentBatteryAsState(): State<BatteryState> {
     val batteryState = remember {
-        MutableStateFlow(BatteryState(-1f, false))
+        MutableStateFlow(BatteryState(null, false))
     }
 
     val context = LocalContext.current

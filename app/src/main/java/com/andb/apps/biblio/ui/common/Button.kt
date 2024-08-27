@@ -7,19 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -43,7 +41,7 @@ fun BiblioButton(
         modifier = modifier,
         enabled = enabled,
         style = style,
-        contentPadding = PaddingValues(horizontal = 8.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
     ) {
         if(icon != null) {
             Icon(
@@ -56,7 +54,7 @@ fun BiblioButton(
             )
         }
         if (text != null) {
-            Text(
+            ExactText(
                 text = text,
                 style = when(style) {
                     ButtonStyle.Outline -> BiblioTheme.typography.caption
@@ -87,6 +85,13 @@ fun BiblioButton(
     CompositionLocalProvider(LocalContentColor provides BiblioTheme.colors.onBackgroundSecondary) {
         Row(
             modifier = modifier
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClick = onClick,
+                )
+                .minimumInteractiveComponentSize()
                 .then(
                     when (style) {
                         ButtonStyle.Ghost -> Modifier
@@ -97,14 +102,6 @@ fun BiblioButton(
                         )
                     }
                 )
-                .clip(shape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    enabled = enabled,
-                    onClick = onClick,
-                )
-                .height(32.dp)
                 .padding(contentPadding),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
