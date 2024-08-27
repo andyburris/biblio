@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.data.booksAsState
 import com.andb.apps.biblio.ui.apps.AppsPage
+import com.andb.apps.biblio.ui.apps.rememberAppsAsState
 import com.andb.apps.biblio.ui.home.HomePage
 import com.andb.apps.biblio.ui.home.rememberStoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryPage
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
             val bookRepository = remember { BookRepository(context) }
             val storagePermissionState = rememberStoragePermissionState()
 
+            val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
 
             BiblioTheme {
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
                             containerColor = BiblioTheme.colors.background,
                         ) { innerPadding ->
                             AppsPage(
+                                appsState = appsState.value,
                                 modifier = Modifier.padding(innerPadding),
                                 onNavigateBack = { navController.popBackStack() }
                             )
