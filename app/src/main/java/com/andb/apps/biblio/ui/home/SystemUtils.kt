@@ -64,3 +64,12 @@ fun currentBatteryAsState(): State<BatteryState> {
 
     return batteryState.collectAsState()
 }
+
+@Composable
+fun wifiSignalAsState(): State<Int> {
+    val wifiSignal = remember {
+        MutableStateFlow(2)
+    }
+
+    return wifiSignal.collectAsState()
+}

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.andb.apps.biblio.ui.theme.BiblioTheme
+import com.andb.apps.biblio.ui.theme.BlackoutIndication
 
 enum class ButtonStyle {
     Ghost, Outline,
@@ -75,7 +76,6 @@ fun BiblioButton(
     contentPadding: PaddingValues = PaddingValues(8.dp),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
-
 ) {
     val shape = when(style){
         ButtonStyle.Ghost -> RectangleShape
@@ -87,7 +87,7 @@ fun BiblioButton(
             modifier = modifier
                 .clickable(
                     interactionSource = interactionSource,
-                    indication = null,
+                    indication = BlackoutIndication,
                     enabled = enabled,
                     onClick = onClick,
                 )

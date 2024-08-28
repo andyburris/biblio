@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,7 +58,7 @@ enum class BookItemSize {
 
 private sealed class BookItemInfo {
     data class Pub(val publication: Publication) : BookItemInfo()
-    data class Custom(val icon: ImageVector?, val title: String) : BookItemInfo()
+    data class Custom(val icon: ImageVector?, val title: String, val badge: String?) : BookItemInfo()
 }
 
 @Composable
@@ -72,7 +74,8 @@ fun BookItem(
     size: BookItemSize,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-) = BookItem(BookItemInfo.Custom(icon, title), size, modifier)
+    badge: String? = null,
+) = BookItem(BookItemInfo.Custom(icon, title, badge), size, modifier)
 
 @Composable
 private fun BookItem(
@@ -150,7 +153,12 @@ private fun BookItem(
         ) {
             val bg = BiblioTheme.colors.background
             val bgSecondary = BiblioTheme.colors.onBackgroundTertiary
-            val pageColors = (0 until (pages * (spineWidthMultiplier)).toInt().coerceAtLeast(1)).flatMap { listOf(bg, bgSecondary) }
+            val pagesMultiplier = when(size) {
+                BookItemSize.Small -> 1 / 256.0
+                BookItemSize.Medium -> 1 / 96.0
+                BookItemSize.Large -> 1 / 60.0
+            }
+            val pageColors = (0 until (pages * pagesMultiplier).toInt().coerceAtLeast(1)).flatMap { listOf(bg, bgSecondary) }
             val pagesGradient = Brush.verticalGradient(pageColors)
             Box(
                 Modifier
@@ -175,13 +183,26 @@ private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
             .background(BiblioTheme.colors.surface)
             .height(height = height)
             .aspectRatio(DefaultBookAspectRatio)
-            .padding(when(size) {
-                BookItemSize.Large -> 12.dp
-                else -> 8.dp
-            }),
+            .padding(
+                when (size) {
+                    BookItemSize.Large -> 12.dp
+                    else -> 8.dp
+                }
+            ),
         verticalArrangement = Arrangement.spacedBy(0.dp, Alignment.Bottom),
     ) {
         if(size == BookItemSize.Small) return
+        if(itemInfo is BookItemInfo.Custom && itemInfo.badge != null) {
+            ExactText(
+                text = itemInfo.badge,
+                style = BiblioTheme.typography.caption,
+                color = BiblioTheme.colors.onBackgroundSecondary,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.weight(1f))
+        }
         if(itemInfo is BookItemInfo.Custom && itemInfo.icon != null) {
             Image(
                 imageVector = itemInfo.icon,

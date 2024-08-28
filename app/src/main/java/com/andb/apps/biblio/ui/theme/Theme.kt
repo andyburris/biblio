@@ -1,5 +1,6 @@
 package com.andb.apps.biblio.ui.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
@@ -13,10 +14,14 @@ import androidx.compose.ui.graphics.Color
 private val LightColorScheme = BiblioColorScheme(
     background = Color.White,
     onBackground = Color.Black,
-    onBackgroundSecondary = Color.Black.copy(alpha = 0.5f),
-    onBackgroundTertiary = Color.Black.copy(alpha = 0.3f),
-    divider = Color.Black.copy(alpha = 0.12f),
-    surface = Color.Black.copy(alpha = 0.05f),
+    onBackgroundSecondary = Color(0xFF808080),
+    onBackgroundTertiary = Color(0xFFBFBFBF),
+    divider = Color(0xFFE0E0E0),
+    surface = Color(0xFFF2F2F2),
+//    onBackgroundSecondary = Color.Black.copy(alpha = 0.5f),
+//    onBackgroundTertiary = Color.Black.copy(alpha = 0.3f),
+//    divider = Color.Black.copy(alpha = 0.12f),
+//    surface = Color.Black.copy(alpha = 0.05f),
 )
 
 private object NoRipple : RippleTheme {
@@ -44,6 +49,7 @@ fun BiblioTheme(
         LocalRippleTheme provides NoRipple,
         LocalColorScheme provides LightColorScheme,
         LocalTypography provides Typography,
+        LocalIndication provides OverlayIndication,
     ) {
         ProvideTextStyle(value = Typography.body, content = content)
     }
