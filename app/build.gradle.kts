@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.sqldelight)
+    alias(libs.plugins.serialization)
 }
 
 android {
@@ -41,12 +44,17 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("BiblioDatabase") {
+            packageName.set("com.andb.apps.biblio")
         }
     }
 }
@@ -67,6 +75,9 @@ dependencies {
     implementation(libs.readium.streamer)
     implementation(libs.readium.navigator)
     implementation(libs.phosphor.icons)
+    implementation(libs.sqldelight.driver)
+    implementation(libs.sqldelight.coroutines)
+    implementation(libs.serialization.json)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

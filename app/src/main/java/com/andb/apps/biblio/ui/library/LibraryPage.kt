@@ -9,17 +9,17 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
 import com.andb.apps.biblio.ui.common.BiblioScaffold
-import org.readium.r2.shared.publication.Publication
 
 @Composable
 fun LibraryPage(
     booksState: BooksState,
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
-    onOpenPublication: (Publication) -> Unit,
+    onOpenBook: (Book) -> Unit,
 ) {
     BiblioScaffold(
         modifier = modifier,
@@ -47,7 +47,7 @@ fun LibraryPage(
                         LibraryItem(
                             publication = it,
                             modifier = Modifier
-                                .clickable { onOpenPublication(it) }
+                                .clickable { onOpenBook(it) }
                                 .padding(8.dp),
                         )
                     }

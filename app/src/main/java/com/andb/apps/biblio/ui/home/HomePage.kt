@@ -31,12 +31,12 @@ import com.adamglin.phosphoricons.regular.Wifihigh
 import com.adamglin.phosphoricons.regular.Wifilow
 import com.adamglin.phosphoricons.regular.Wifimedium
 import com.adamglin.phosphoricons.regular.Wifinone
+import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.theme.BiblioTheme
-import org.readium.r2.shared.publication.Publication
 import java.text.SimpleDateFormat
 
 @Composable
@@ -46,7 +46,7 @@ fun HomePage(
     onNavigateToApps: () -> Unit,
     onNavigateToLibrary: () -> Unit,
     onRequestStoragePermission: () -> Unit,
-    onOpenPublication: (Publication) -> Unit,
+    onOpenBook: (Book) -> Unit,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         Column(
@@ -91,7 +91,7 @@ fun HomePage(
                                 publication = publications.books.first(),
                                 size = BookItemSize.Large,
                                 modifier = Modifier
-                                    .clickable { onOpenPublication(publications.books.first()) }
+                                    .clickable { onOpenBook(publications.books.first()) }
                                     .padding(16.dp),
                             )
                         }
@@ -110,7 +110,7 @@ fun HomePage(
                                         publication = it,
                                         size = BookItemSize.Medium,
                                         modifier = Modifier
-                                            .clickable { onOpenPublication(it) }
+                                            .clickable { onOpenBook(it) }
                                             .padding(8.dp),
                                     )
                                 }

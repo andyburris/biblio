@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -58,8 +59,11 @@ fun currentBatteryAsState(): State<BatteryState> {
         }
     }
 
-    LaunchedEffect(context, batteryBroadcastReceiver) {
+    DisposableEffect(context, batteryBroadcastReceiver) {
         context.registerReceiver(batteryBroadcastReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        onDispose {
+            context.unregisterReceiver(batteryBroadcastReceiver)
+        }
     }
 
     return batteryState.collectAsState()

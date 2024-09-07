@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -29,17 +30,15 @@ import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 class MainActivity : ComponentActivity() {
 
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val navController = rememberNavController()
-
             val context = LocalContext.current
-            val bookRepository = remember { BookRepository(context) }
+            val coroutineScope = rememberCoroutineScope()
+            val navController = rememberNavController()
             val storagePermissionState = rememberStoragePermissionState()
+            val bookRepository = remember { BookRepository(context, coroutineScope) }
 
             val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
@@ -62,7 +61,7 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToApps = { navController.navigate("apps") },
                                 onNavigateToLibrary = { navController.navigate("library") },
                                 onRequestStoragePermission = { storagePermissionState.launchPermissionRequest() },
-                                onOpenPublication = { bookRepository.openPublication(it) },
+                                onOpenBook = { bookRepository.openBook(it) },
                             )
                         }
                     }
@@ -87,7 +86,7 @@ class MainActivity : ComponentActivity() {
                                 booksState = booksState.value,
                                 modifier = Modifier.padding(innerPadding),
                                 onNavigateBack = { navController.popBackStack() },
-                                onOpenPublication = { bookRepository.openPublication(it) },
+                                onOpenBook = { bookRepository.openBook(it) },
                             )
                         }
                     }

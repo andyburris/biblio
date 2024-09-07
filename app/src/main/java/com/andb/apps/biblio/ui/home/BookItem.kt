@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,30 +38,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.andb.apps.biblio.data.Book
+import com.andb.apps.biblio.data.BookCover
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.skew
 import com.andb.apps.biblio.ui.library.NO_TITLE
 import com.andb.apps.biblio.ui.theme.BiblioTheme
-import org.readium.r2.shared.publication.Publication
-import org.readium.r2.shared.publication.epub.pageList
-import org.readium.r2.shared.publication.services.cover
 
 
 const val DefaultBookAspectRatio = (256 / 384.0f)
 
-data class BookCoverImage(val cover: Bitmap, val blurred: Bitmap, val spineBlurred: Bitmap)
 enum class BookItemSize {
     Small, Medium, Large
 }
 
 private sealed class BookItemInfo {
-    data class Pub(val publication: Publication) : BookItemInfo()
+    data class Pub(val publication: Book) : BookItemInfo()
     data class Custom(val icon: ImageVector?, val title: String, val badge: String?) : BookItemInfo()
 }
 
 @Composable
 fun BookItem(
-    publication: Publication,
+    publication: Book,
     size: BookItemSize,
     modifier: Modifier = Modifier,
 ) = BookItem(BookItemInfo.Pub(publication), size, modifier)
@@ -100,33 +96,14 @@ private fun BookItem(
 
     val pages = when(coverInfo) {
         is BookItemInfo.Custom -> 300
-        is BookItemInfo.Pub -> coverInfo.publication.metadata.numberOfPages
-            ?: if(coverInfo.publication.pageList.size > 5) coverInfo.publication.pageList.size else 300
+        is BookItemInfo.Pub -> coverInfo.publication.length ?: 300
     }
 
     val spineWidth = ((pages * spineWidthMultiplier) + 2.0).dp
-
-    val potentialCovers = remember { mutableStateOf<BookCoverImage?>(null) }
-    LaunchedEffect(coverInfo) {
-        if(coverInfo !is BookItemInfo.Pub) return@LaunchedEffect
-        val cover = coverInfo.publication.cover()
-        if (cover != null) {
-            val blurred = (0 until 4).fold(cover) { acc, _ ->
-                acc.blur(context, 25f)
-            }
-            val spineResized = Bitmap.createScaledBitmap(
-                blurred,
-                with(density) { spineWidth.toPx() }.toInt(),
-                with(density) { height.toPx() }.toInt(),
-                false
-            ).flipHorizontally()
-            val spineBlurred = (0 until 4).fold(spineResized) { acc, _ ->
-                acc.blur(context, 25f)
-            }
-            potentialCovers.value = BookCoverImage(cover, blurred, spineBlurred)
-        }
+    val cover = when {
+        coverInfo is BookItemInfo.Pub && coverInfo.publication.cover is BookCover.Available -> coverInfo.publication.cover
+        else -> null
     }
-
 
     Row(
         modifier
@@ -140,10 +117,27 @@ private fun BookItem(
                 .width(spineWidth)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(bottomStart = 12.dp))
-                .then(when (val cover = potentialCovers.value) {
+                .then(when (cover) {
                     null -> Modifier.background(BiblioTheme.colors.onBackgroundTertiary)
-                    else -> Modifier.drawBehind {
-                        drawImage(cover.spineBlurred.asImageBitmap())
+                    else -> {
+                        val blurred = remember {
+                            val blurred = (0 until 4).fold(cover.image) { acc, _ ->
+                                acc.blur(context, 25f)
+                            }
+                            val spineResized = Bitmap.createScaledBitmap(
+                                blurred,
+                                with(density) { spineWidth.toPx() }.toInt(),
+                                with(density) { height.toPx() }.toInt(),
+                                false
+                            ).flipHorizontally()
+                            val spineBlurred = (0 until 4).fold(spineResized) { acc, _ ->
+                                acc.blur(context, 25f)
+                            }
+                            spineBlurred.asImageBitmap()
+                        }
+                        Modifier.drawBehind {
+                            drawImage(blurred)
+                        }
                     }
                 })
 
@@ -168,9 +162,9 @@ private fun BookItem(
                     .fillMaxWidth()
                     .background(pagesGradient)
             )
-            when(val cover = potentialCovers.value) {
+            when(cover) {
                 null -> TextCover(coverInfo, size, height)
-                else -> ImageCover(cover.cover, (coverInfo as BookItemInfo.Pub).publication, height)
+                else -> ImageCover(cover, (coverInfo as BookItemInfo.Pub).publication, height)
             }
         }
     }
@@ -215,7 +209,7 @@ private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
         }
         ExactText(
             text = when(itemInfo) {
-                is BookItemInfo.Pub -> itemInfo.publication.metadata.title ?: NO_TITLE
+                is BookItemInfo.Pub -> itemInfo.publication.title ?: NO_TITLE
                 is BookItemInfo.Custom -> itemInfo.title
             },
             style = when(size) {
@@ -227,7 +221,7 @@ private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
         )
         if(itemInfo is BookItemInfo.Pub) {
             ExactText(
-                text = itemInfo.publication.metadata.authors.joinAuthorsToString(),
+                text = itemInfo.publication.authors.joinAuthorsToString(),
                 style = when(size) {
                     BookItemSize.Large -> BiblioTheme.typography.body
                     else -> BiblioTheme.typography.caption
@@ -241,16 +235,17 @@ private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
 }
 
 @Composable
-fun ImageCover(cover: Bitmap, publication: Publication, height: Dp) {
+fun ImageCover(cover: BookCover.Available, publication: Book, height: Dp) {
     Image(
-        bitmap = cover.asImageBitmap(),
-        contentDescription = "Cover of ${publication.metadata.title}",
+        bitmap = cover.image.asImageBitmap(),
+        contentDescription = "Cover of ${publication.title}",
         modifier = Modifier
             .height(height)
-            .aspectRatio(cover.width / cover.height.toFloat())
+            .aspectRatio(cover.image.width / cover.image.height.toFloat())
     )
 }
 
+@Suppress("DEPRECATION")
 fun Bitmap.blur(context: Context, radius: Float = 25f): Bitmap {
     val outBitmap = Bitmap.createBitmap(this.width, this.height, Bitmap.Config.ARGB_8888)
     val rs = RenderScript.create(context)
