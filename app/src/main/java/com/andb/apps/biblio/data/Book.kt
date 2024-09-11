@@ -17,12 +17,13 @@ sealed class BookCover {
 }
 data class Book(
     val id: String,
+    val identifier: String?,
     val title: String?,
     val authors: List<Contributor>,
     val cover: BookCover,
     val progress: BookProgress,
     val length: Int?,
-    val filePath: String,
+    val filePaths: List<String>,
 )
 
 @Serializable

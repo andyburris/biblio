@@ -24,9 +24,15 @@ fun createDatabase(context: Context): BiblioDatabase {
         savedBookAdapter = SavedBook.Adapter(
             authorsAdapter = AuthorsAdapter,
             progressAdapter = ProgressAdapter,
+            filePathsAdapter = StringListAdapter,
         )
     )
     return database
+}
+
+private object StringListAdapter: ColumnAdapter<List<String>, String> {
+    override fun decode(databaseValue: String): List<String> = Json.decodeFromString(databaseValue)
+    override fun encode(value: List<String>): String = Json.encodeToString(value)
 }
 
 private object AuthorsAdapter: ColumnAdapter<List<Contributor>, String> {

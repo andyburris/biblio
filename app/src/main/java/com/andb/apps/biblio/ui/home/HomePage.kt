@@ -88,7 +88,7 @@ fun HomePage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             BookItem(
-                                publication = booksState.currentlyReading.first(),
+                                publication = booksState.currentlyReading.firstOrNull() ?: booksState.unread.first(),
                                 size = BookItemSize.Large,
                                 modifier = Modifier
                                     .clickable { onOpenBook(booksState.currentlyReading.first()) }

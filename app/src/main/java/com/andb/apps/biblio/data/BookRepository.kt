@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Environment
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -18,27 +17,21 @@ import com.andb.apps.biblio.ui.home.ReadiumUtils
 import com.andb.apps.biblio.ui.home.StoragePermissionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.withContext
+import org.readium.r2.shared.publication.Contributor
+import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.epub.pageList
 import org.readium.r2.shared.publication.services.cover
 import org.readium.r2.shared.util.getOrElse
 import java.io.File
 import java.time.LocalDateTime
-import java.util.Date
 import java.util.UUID
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTimedValue
 import kotlin.time.toJavaDuration
 
@@ -65,6 +58,7 @@ class BookRepository(
                 books.map { book ->
                     Book(
                         id = book.id,
+                        identifier = book.identifier,
                         title = book.title,
                         authors = book.authors,
                         cover = when(val cover = coverStorage.getCover(book.id)) {
@@ -73,7 +67,7 @@ class BookRepository(
                         },
                         progress = book.progress,
                         length = book.length?.toInt(),
-                        filePath = book.filePath,
+                        filePaths = book.filePaths,
                     )
                 }
             }
@@ -94,17 +88,17 @@ class BookRepository(
                 }.filter { ACCEPTED_EXTENSIONS.contains(it.extension) } // it is of accepted type
                 .toList()
         }
-        println("took $duration to get files")
+        println("took $duration to get files, found ${files.size} files")
         return files
     }
 
     suspend fun refreshPublicationsFromStorage(existingBooks: List<Book>) {
         val files = getPublicationsFromStorage()
 
-        val existingPaths = existingBooks.map { it.filePath }
+        val existingPaths = existingBooks.flatMap { it.filePaths }
         val updatedPaths = files.map { it.path }
         val newFiles = files.filter { it.path !in existingPaths }
-        val deletedBooks = existingBooks.filter { it.filePath !in updatedPaths }
+        val deletedBooks = existingBooks.filter { book -> book.filePaths.none { it in updatedPaths } }
 
         if (newFiles.isEmpty() && deletedBooks.isEmpty()) return
 
@@ -125,25 +119,34 @@ class BookRepository(
             }
             .awaitAll()
             .filterNotNull()
-            .distinctBy { (pub, _) ->
-                listOf(
-                    pub.metadata.title,
-                    pub.metadata.authors.distinctBy { it.identifier ?: it.name }
-                )
-            }
+            .fold(emptyMap<Pair<String?, List<Contributor>>, Pair<Publication, List<File>>>()) { acc, (pub, file) ->
+                val key = pub.metadata.title to pub.metadata.authors.distinctBy { it.identifier ?: it.name }
+                when(acc.containsKey(key)) {
+                    true -> {
+                        val current = acc.getValue(key)
+                        val newFiles = current.second + file
+                        acc + (key to (current.first to newFiles))
+                    }
+                    false -> {
+                        acc + (key to (pub to listOf(file)))
+                    }
+                }
+            }.values
+            .toList()
 
-        val savedBooks: List<SavedBook> = loadedBooks.map { (pub, file) ->
+        val savedBooks: List<SavedBook> = loadedBooks.map { (pub, files) ->
             SavedBook(
-                id = pub.metadata.identifier ?: UUID.randomUUID().toString(),
+                id = UUID.randomUUID().toString(),
+                identifier = pub.metadata.identifier,
                 title = pub.metadata.title,
                 authors = pub.metadata.authors.distinctBy { it.identifier ?: it.name },
                 progress = BookProgress.Basic(addedAt = LocalDateTime.now(), timesOpened = 0L),
                 length = (pub.metadata.numberOfPages ?: if(pub.pageList.size > 5) pub.pageList.size else 300).toLong(),
-                filePath = file.path,
+                filePaths = files.map{ it.path },
             )
         }
         loadedBooks.zip(savedBooks).map { (pub, book) ->
-            coroutineScope.async {
+            coroutineScope.async(Dispatchers.IO) {
                 val cover = pub.first.cover()
                 if (cover != null) coverStorage.saveCover(book.id, cover)
             }
@@ -154,20 +157,20 @@ class BookRepository(
         val movedBookIds = movedBooks.map { it.id }
 
         database.savedBookQueries.transaction {
-            savedBooks.filter { it.id !in movedBookIds }.map { book ->
+            savedBooks.filter { it.id !in movedBookIds }.forEach { book ->
                 database.savedBookQueries.insertFullBookObject(book)
             }
             deletedBooks.filter { it.id !in movedBookIds }.forEach { book ->
                 database.savedBookQueries.delete(book.id)
             }
             movedBooks.forEach {
-                database.savedBookQueries.updateFilePath(it.filePath, it.id)
+                database.savedBookQueries.updateFilePaths(it.filePaths, it.id)
             }
         }
     }
 
     fun openBook(book: Book) {
-        val file = File(book.filePath)
+        val file = File(book.filePaths.first())
         val uri = FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.provider", file)
         val mime = context.contentResolver.getType(uri)
         val openFileIntent = Intent(Intent.ACTION_VIEW)

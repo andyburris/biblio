@@ -1,25 +1,27 @@
 import com.andb.apps.biblio.data.BookProgress;
+import kotlin.String;
 import kotlin.collections.List;
 import org.readium.r2.shared.publication.Contributor;
 
 CREATE TABLE savedBook(
     id TEXT NOT NULL PRIMARY KEY,
+    identifier TEXT,
     title TEXT,
     authors TEXT AS List<Contributor> NOT NULL,
     progress TEXT AS BookProgress NOT NULL,
     length INTEGER,
-    filePath TEXT NOT NULL
+    filePaths TEXT AS List<String> NOT NULL
 );
 
 selectAll:
 SELECT * FROM savedBook;
 
 insert:
-INSERT INTO savedBook(id, title, authors, progress, length, filePath)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO savedBook(id, identifier, title, authors, progress, length, filePaths)
+VALUES (?,  ?, ?, ?, ?, ?, ?);
 
 insertFullBookObject:
-INSERT INTO savedBook(id, title, authors, progress, length, filePath)
+INSERT INTO savedBook(id, identifier, title, authors, progress, length, filePaths)
 VALUES ?;
 
 delete:
@@ -29,10 +31,10 @@ updateProgress:
 UPDATE savedBook SET progress = ?
 WHERE id = ?;
 
-updateFilePath:
-UPDATE savedBook SET filePath = ?
+updateFilePaths:
+UPDATE savedBook SET filePaths = ?
 WHERE id = ?;
 
 updateFullBookObject:
-INSERT OR REPLACE INTO savedBook(id, title, authors, progress, length, filePath)
+INSERT OR REPLACE INTO savedBook(id, identifier, title, authors, progress, length, filePaths)
 VALUES ?;
