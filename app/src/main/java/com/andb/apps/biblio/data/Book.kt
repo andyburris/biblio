@@ -27,20 +27,32 @@ data class Book(
 
 @Serializable
 sealed class BookProgress() {
-    abstract val lastOpened: LocalDateTime
+    abstract val lastOpened: LocalDateTime?
+    abstract val addedAt: LocalDateTime
     abstract val timesOpened: Long
 
     @Serializable data class Progress(
         val percent: Double,
         @Serializable(with = LocalDateTimeSerializer::class)
-        override val lastOpened: LocalDateTime,
+        override val addedAt: LocalDateTime,
         override val timesOpened: Long,
-    ) : BookProgress()
+        @Serializable(with = LocalDateTimeSerializer::class)
+        override val lastOpened: LocalDateTime? = null,
+        ) : BookProgress()
     @Serializable data class Basic(
         @Serializable(with = LocalDateTimeSerializer::class)
-        override val lastOpened: LocalDateTime,
+        override val addedAt: LocalDateTime,
         override val timesOpened: Long,
-    ) : BookProgress()
+        @Serializable(with = LocalDateTimeSerializer::class)
+        override val lastOpened: LocalDateTime? = null,
+        ) : BookProgress()
+
+    fun increaseOpened(): BookProgress {
+        return when(this) {
+            is Progress -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now())
+            is Basic -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now())
+        }
+    }
 }
 
 private object LocalDateTimeSerializer : KSerializer<LocalDateTime> {

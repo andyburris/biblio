@@ -49,7 +49,7 @@ data class BiblioTypography(
         fontFamily = eczarSemibold,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
-//        lineHeight = 18.sp,
+        lineHeight = 18.sp,
         lineHeightStyle = LineHeightStyle(
             alignment = LineHeightStyle.Alignment.Proportional,
             trim = LineHeightStyle.Trim.None

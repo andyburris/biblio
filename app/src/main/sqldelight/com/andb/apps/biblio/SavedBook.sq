@@ -3,8 +3,7 @@ import kotlin.collections.List;
 import org.readium.r2.shared.publication.Contributor;
 
 CREATE TABLE savedBook(
-    key INTEGER PRIMARY KEY AUTOINCREMENT,
-    identifier TEXT NOT NULL,
+    id TEXT NOT NULL PRIMARY KEY,
     title TEXT,
     authors TEXT AS List<Contributor> NOT NULL,
     progress TEXT AS BookProgress NOT NULL,
@@ -16,10 +15,24 @@ selectAll:
 SELECT * FROM savedBook;
 
 insert:
-INSERT INTO savedBook(identifier, title, authors, progress, length, filePath)
+INSERT INTO savedBook(id, title, authors, progress, length, filePath)
 VALUES (?, ?, ?, ?, ?, ?);
 
 insertFullBookObject:
-INSERT INTO savedBook(identifier, title, authors, progress, length, filePath)
+INSERT INTO savedBook(id, title, authors, progress, length, filePath)
 VALUES ?;
 
+delete:
+DELETE FROM savedBook WHERE id = ?;
+
+updateProgress:
+UPDATE savedBook SET progress = ?
+WHERE id = ?;
+
+updateFilePath:
+UPDATE savedBook SET filePath = ?
+WHERE id = ?;
+
+updateFullBookObject:
+INSERT OR REPLACE INTO savedBook(id, title, authors, progress, length, filePath)
+VALUES ?;

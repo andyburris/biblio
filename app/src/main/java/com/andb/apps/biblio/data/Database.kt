@@ -22,14 +22,14 @@ fun createDatabase(context: Context): BiblioDatabase {
     val database = BiblioDatabase(
         driver = driver,
         savedBookAdapter = SavedBook.Adapter(
-            authorsAdapter = authorsAdapter,
-            progressAdapter = progressAdapter,
+            authorsAdapter = AuthorsAdapter,
+            progressAdapter = ProgressAdapter,
         )
     )
     return database
 }
 
-private object authorsAdapter: ColumnAdapter<List<Contributor>, String> {
+private object AuthorsAdapter: ColumnAdapter<List<Contributor>, String> {
     override fun decode(databaseValue: String): List<Contributor> = Json.decodeFromString(
         deserializer = ListSerializer(ContributorAsStringSerializer),
         string = databaseValue,
@@ -54,7 +54,7 @@ private object ContributorAsStringSerializer : KSerializer<Contributor> {
     }
 }
 
-private object progressAdapter: ColumnAdapter<BookProgress, String> {
+private object ProgressAdapter: ColumnAdapter<BookProgress, String> {
     override fun decode(databaseValue: String): BookProgress = Json.decodeFromString<BookProgress>(databaseValue)
     override fun encode(value: BookProgress): String = Json.encodeToString(value)
 }

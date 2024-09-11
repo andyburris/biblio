@@ -56,7 +56,7 @@ fun HomePage(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when(val publications = booksState) {
+            when(booksState) {
                 BooksState.Loading -> Text(
                     modifier = Modifier.padding(64.dp),
                     text = "Loading...",
@@ -71,7 +71,7 @@ fun HomePage(
                         text = "Allow storage permissions",
                     )
                 }
-                is BooksState.Loaded -> when(publications.books.isNotEmpty()) {
+                is BooksState.Loaded -> when (booksState.allBooks.isNotEmpty()) {
                     true -> Column(
                         modifier = Modifier
                             .weight(1f)
@@ -88,10 +88,10 @@ fun HomePage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             BookItem(
-                                publication = publications.books.first(),
+                                publication = booksState.currentlyReading.first(),
                                 size = BookItemSize.Large,
                                 modifier = Modifier
-                                    .clickable { onOpenBook(publications.books.first()) }
+                                    .clickable { onOpenBook(booksState.currentlyReading.first()) }
                                     .padding(16.dp),
                             )
                         }
@@ -105,7 +105,8 @@ fun HomePage(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val numBooks = (this@BoxWithConstraints.maxWidth / 128.dp).toInt()
-                                publications.books.drop(1).take(numBooks).forEach {
+                                val slate = booksState.currentlyReading + booksState.unread //TODO: always show one next up?
+                                slate.drop(1).take(numBooks).forEach {
                                     BookItem(
                                         publication = it,
                                         size = BookItemSize.Medium,
@@ -126,6 +127,7 @@ fun HomePage(
                             }
                         }
                     }
+
                     false -> Text(text = "No books found")
                 }
             }
