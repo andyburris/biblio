@@ -20,25 +20,32 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.andb.apps.biblio.data.BookRepository
+import com.andb.apps.biblio.data.SyncServer
 import com.andb.apps.biblio.data.booksAsState
 import com.andb.apps.biblio.ui.apps.AppsPage
 import com.andb.apps.biblio.ui.apps.rememberAppsAsState
 import com.andb.apps.biblio.ui.home.HomePage
 import com.andb.apps.biblio.ui.home.rememberStoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryPage
+import com.andb.apps.biblio.ui.test.TestPage
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 class MainActivity : ComponentActivity() {
 
+    private lateinit var server: SyncServer
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        server = SyncServer(getExternalFilesDir(null)!!)
+        server.start()
+
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
             val navController = rememberNavController()
             val storagePermissionState = rememberStoragePermissionState()
-            val bookRepository = remember { BookRepository(context, coroutineScope) }
+            val bookRepository = remember { BookRepository(context, coroutineScope, server) }
 
             val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
@@ -60,6 +67,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.padding(innerPadding),
                                 onNavigateToApps = { navController.navigate("apps") },
                                 onNavigateToLibrary = { navController.navigate("library") },
+                                onNavigateToTest = { navController.navigate("test") },
                                 onRequestStoragePermission = { storagePermissionState.launchPermissionRequest() },
                                 onOpenBook = { bookRepository.openBook(it) },
                             )
@@ -90,6 +98,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    composable("test") {
+                        Scaffold(
+                            Modifier.fillMaxSize(),
+                            containerColor = BiblioTheme.colors.background,
+                        ) { innerPadding ->
+                            TestPage(
+                                server = server,
+                                modifier = Modifier.padding(innerPadding),
+                                onNavigateBack = { navController.popBackStack() },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -103,5 +123,10 @@ class MainActivity : ComponentActivity() {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
             )
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        server.stop()
     }
 }

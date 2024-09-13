@@ -54,6 +54,13 @@ sealed class BookProgress() {
             is Basic -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now())
         }
     }
+
+    fun withProgress(percent: Double): Progress {
+        return when(this) {
+            is Progress -> this.copy(percent = percent)
+            is Basic -> Progress(percent, addedAt, timesOpened, lastOpened)
+        }
+    }
 }
 
 private object LocalDateTimeSerializer : KSerializer<LocalDateTime> {

@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.andb.apps.biblio"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -47,6 +47,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/nanohttpd/mimetypes.properties"
         }
     }
 }
@@ -78,6 +79,7 @@ dependencies {
     implementation(libs.sqldelight.driver)
     implementation(libs.sqldelight.coroutines)
     implementation(libs.serialization.json)
+//    implementation(libs.nanohttpd)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -21,7 +21,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.withContext
 import org.readium.r2.shared.publication.Contributor
 import org.readium.r2.shared.publication.Publication
@@ -44,17 +47,21 @@ val DATA_DIR = File("$ROOT_DIR/data")
 class BookRepository(
     private val context: Context,
     private val coroutineScope: CoroutineScope,
+    private val syncServer: SyncServer,
 ) {
     private val readium = ReadiumUtils(context)
     private val database = createDatabase(context)
     private val coverStorage = CoverStorage(context)
+
+    private val progressFileFlow = syncServer.fileFlow.toProgressFileFlow()
 
     fun getBooks(): Flow<List<Book>> {
         val flow = database.savedBookQueries
             .selectAll()
             .asFlow()
             .map { query -> query.executeAsList() }
-            .map { books ->
+            .combine(progressFileFlow) { a, b -> a to b }
+            .map { (books, progressFiles) ->
                 books.map { book ->
                     Book(
                         id = book.id,
@@ -65,7 +72,7 @@ class BookRepository(
                             null -> BookCover.Unavailable
                             else -> BookCover.Available(cover)
                         },
-                        progress = book.progress,
+                        progress = book.getProgressFor(progressFiles),
                         length = book.length?.toInt(),
                         filePaths = book.filePaths,
                     )
@@ -223,10 +230,10 @@ fun BookRepository.booksAsState(
     LaunchedEffect(permissionState) {
         withContext(Dispatchers.IO) {
             while(true){
-                refreshPublicationsFromStorage(when(val state = allBooks.value) {
-                    is BooksState.Loaded -> state.allBooks
-                    else -> emptyList()
-                })
+                when (val existingBooks = allBooks.value) {
+                    is BooksState.Loaded -> refreshPublicationsFromStorage(existingBooks.allBooks)
+                    else -> {}
+                }
                 delay(10000)
             }
         }

@@ -8,6 +8,7 @@ import android.renderscript.RenderScript
 import android.renderscript.ScriptIntrinsicBlur
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +19,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -38,12 +42,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BookCover
+import com.andb.apps.biblio.data.BookProgress
 import com.andb.apps.biblio.ui.common.ExactText
+import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.common.skew
 import com.andb.apps.biblio.ui.library.NO_TITLE
 import com.andb.apps.biblio.ui.theme.BiblioTheme
+import kotlin.math.roundToInt
 
 
 const val DefaultBookAspectRatio = (256 / 384.0f)
@@ -108,7 +117,7 @@ private fun BookItem(
     Row(
         modifier
             .height(IntrinsicSize.Max)
-            .skew(yDeg = -3.0)
+//            .skew(yDeg = -3.0)
     ) {
         Box(
             Modifier
@@ -120,7 +129,7 @@ private fun BookItem(
                 .then(when (cover) {
                     null -> Modifier.background(BiblioTheme.colors.onBackgroundTertiary)
                     else -> {
-                        val blurred = remember {
+                        val blurred = remember(cover) {
                             val blurred = (0 until 4).fold(cover.image) { acc, _ ->
                                 acc.blur(context, 25f)
                             }
@@ -140,7 +149,6 @@ private fun BookItem(
                         }
                     }
                 })
-
         )
         Column(
             Modifier.width(IntrinsicSize.Max)
@@ -155,13 +163,61 @@ private fun BookItem(
             val pageColors = (0 until (pages * pagesMultiplier).toInt().coerceAtLeast(1)).flatMap { listOf(bg, bgSecondary) }
             val pagesGradient = Brush.verticalGradient(pageColors)
             Box(
-                Modifier
-                    .offset(x = -spineWidth)
-                    .skew(xDeg = 55.0)
-                    .height(spineWidth)
-                    .fillMaxWidth()
-                    .background(pagesGradient)
-            )
+                Modifier.heightIn(max = spineWidth)
+            ) {
+                Box(
+                    Modifier
+                        .offset(x = -spineWidth)
+                        .skew(xDeg = 55.0)
+                        .height(spineWidth)
+                        .fillMaxWidth()
+                        .background(pagesGradient)
+                )
+                if(
+                    coverInfo is BookItemInfo.Pub
+                    && coverInfo.publication.progress is BookProgress.Progress
+                    && size != BookItemSize.Small
+                ) {
+                    val percent = coverInfo.publication.progress.percent
+
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .wrapContentHeight(align = Alignment.Bottom, unbounded = true)
+                            .offset(
+                                x = -(8.dp + (spineWidth * percent.toFloat())),
+                                y = -(spineWidth * percent.toFloat() * 0.9f),
+                            )
+                            .background(
+                                color = BiblioTheme.colors.onBackground,
+                                shape = when(size){
+                                    BookItemSize.Large -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                                    else -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                },
+                            )
+                            .padding(
+                                horizontal = when(size){
+                                    BookItemSize.Large -> 8.dp
+                                    else -> 4.dp
+                                },
+                                vertical = when(size){
+                                    BookItemSize.Large -> 2.dp
+                                    else -> 0.dp
+                                }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ExactText(
+                            text = "${(percent * 100).roundToInt()}%",
+                            color = BiblioTheme.colors.background,
+                            style = when(size){
+                                BookItemSize.Large -> BiblioTheme.typography.body
+                                else -> BiblioTheme.typography.caption
+                            }
+                        )
+                    }
+                }
+            }
             when(cover) {
                 null -> TextCover(coverInfo, size, height)
                 else -> ImageCover(cover, (coverInfo as BookItemInfo.Pub).publication, height)

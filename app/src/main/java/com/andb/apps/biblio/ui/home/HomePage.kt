@@ -45,6 +45,7 @@ fun HomePage(
     modifier: Modifier = Modifier,
     onNavigateToApps: () -> Unit,
     onNavigateToLibrary: () -> Unit,
+    onNavigateToTest: () -> Unit,
     onRequestStoragePermission: () -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
@@ -148,7 +149,7 @@ fun HomePage(
             val batteryState = currentBatteryAsState()
             val wifiState = wifiSignalAsState()
             BiblioButton(
-                onClick = { /*TODO*/ },
+                onClick = { onNavigateToTest() },
                 style = ButtonStyle.Outline,
             ) {
                 Icon(
