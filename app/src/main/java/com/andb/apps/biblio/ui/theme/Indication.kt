@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Paint
@@ -53,7 +54,7 @@ private class DarkenIndicationNode(
         val darkenFilter = ColorFilter.colorMatrix(darkenMatrix)
         val paint = Paint().apply { colorFilter = darkenFilter }
 
-        val canvasBounds = Rect(Offset.Zero, size)
+        val canvasBounds = Rect(Offset(-50f, -50f), Size(size.width + 100f,  size.height + 100f))
         drawIntoCanvas {
             if(pressedState.value) {
                 it.saveLayer(canvasBounds, paint)

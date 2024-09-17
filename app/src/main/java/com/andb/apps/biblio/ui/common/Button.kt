@@ -34,6 +34,7 @@ fun BiblioButton(
     modifier: Modifier = Modifier,
     text: String? = null,
     icon: ImageVector? = null,
+    rightIcon: ImageVector? = null,
     enabled: Boolean = true,
     style: ButtonStyle = ButtonStyle.Ghost,
 ) {
@@ -62,6 +63,16 @@ fun BiblioButton(
                     ButtonStyle.Ghost -> BiblioTheme.typography.body
                 },
                 // modifier = Modifier.border(1.dp, Color.Red),
+            )
+        }
+        if(rightIcon != null) {
+            Icon(
+                imageVector = rightIcon,
+                contentDescription = null,
+                modifier = Modifier.size(when(style) {
+                    ButtonStyle.Ghost -> 20.dp
+                    ButtonStyle.Outline -> 16.dp
+                })
             )
         }
     }

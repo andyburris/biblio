@@ -178,7 +178,8 @@ class BookRepository(
 
     fun openBook(book: Book) {
         val file = File(book.filePaths.first())
-        val uri = FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.provider", file)
+        val providerAuthority = "${BuildConfig.APPLICATION_ID}.provider"
+        val uri = FileProvider.getUriForFile(context, providerAuthority, file)
         val mime = context.contentResolver.getType(uri)
         val openFileIntent = Intent(Intent.ACTION_VIEW)
             .also {

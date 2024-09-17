@@ -100,7 +100,7 @@ private fun TempLibraryGrid(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 12.dp)
     ) {
-        item(span = { GridItemSpan((2).coerceAtMost(this.maxLineSpan)) }) {
+        item(span = { GridItemSpan(this.maxLineSpan) }) {
             LibrarySectionHeader(
                 title = "Currently Reading",
                 books = booksState.currentlyReading,
@@ -117,7 +117,7 @@ private fun TempLibraryGrid(
             )
         }
 
-        item(span = { GridItemSpan((2).coerceAtMost(this.maxLineSpan)) }) {
+        item(span = { GridItemSpan(this.maxLineSpan) }) {
             LibrarySectionHeader(
                 title = "Up Next",
                 books = booksState.unread,
@@ -134,7 +134,7 @@ private fun TempLibraryGrid(
             )
         }
 
-        item(span = { GridItemSpan((2).coerceAtMost(this.maxLineSpan)) }) {
+        item(span = { GridItemSpan(this.maxLineSpan) }) {
             LibrarySectionHeader(
                 title = "Already Read & Backburner",
                 books = booksState.doneOrBackburner,

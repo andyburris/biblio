@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option java_package = "com.andb.apps.biblio";
+option java_multiple_files = true;
+
+enum SyncApp {
+  SYNC_APP_NONE = 0;
+  SYNC_APP_MOON_READER = 1;
+}
+
+message Settings {
+  CommonSettings common = 1;
+  HomeSettings home = 2;
+  LibrarySettings library = 3;
+}
+
+message CommonSettings {
+  bool show_numbers = 1;
+  SyncApp sync_app = 2;
+}
+
+message HomeSettings {
+  repeated string pinned_apps = 1;
+}
+
+enum LibraryView {
+    LIBRARY_VIEW_LIST = 0;
+    LIBRARY_VIEW_GRID = 1;
+}
+message LibrarySettings {
+  LibraryView view = 1;
+}

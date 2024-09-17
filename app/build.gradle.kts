@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.serialization)
+    alias(libs.plugins.protobuf)
 }
 
 android {
@@ -30,6 +31,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "Biblio Beta")
         }
     }
     compileOptions {
@@ -60,6 +65,25 @@ sqldelight {
     }
 }
 
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.23.2"
+    }
+
+    // Generates the java Protobuf-lite code for the Protobufs in this project. See
+    // https://github.com/google/protobuf-gradle-plugin#customizing-protobuf-compilation
+    // for more information.
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+        }
+    }
+}
+
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.core.ktx)
@@ -79,7 +103,8 @@ dependencies {
     implementation(libs.sqldelight.driver)
     implementation(libs.sqldelight.coroutines)
     implementation(libs.serialization.json)
-//    implementation(libs.nanohttpd)
+    implementation(libs.protobuf.javalite)
+    implementation(libs.datastore)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

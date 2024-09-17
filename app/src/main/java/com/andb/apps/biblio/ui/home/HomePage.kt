@@ -13,9 +13,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Batterycharging
@@ -34,8 +39,10 @@ import com.adamglin.phosphoricons.regular.Wifinone
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.ui.common.BiblioButton
+import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
+import com.andb.apps.biblio.ui.common.clickableOverlay
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 import java.text.SimpleDateFormat
 
@@ -49,11 +56,12 @@ fun HomePage(
     onRequestStoragePermission: () -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    BiblioScaffold(
+        modifier = modifier,
+        bottomBar = { HomeBottomBar(onNavigateToApps = onNavigateToApps) },
+    ) {
         Column(
-            Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -92,7 +100,7 @@ fun HomePage(
                                 publication = booksState.currentlyReading.firstOrNull() ?: booksState.unread.first(),
                                 size = BookItemSize.Large,
                                 modifier = Modifier
-                                    .clickable { onOpenBook(booksState.currentlyReading.first()) }
+                                    .clickableOverlay { onOpenBook(booksState.currentlyReading.first()) }
                                     .padding(16.dp),
                             )
                         }
@@ -112,8 +120,8 @@ fun HomePage(
                                         publication = it,
                                         size = BookItemSize.Medium,
                                         modifier = Modifier
-                                            .clickable { onOpenBook(it) }
-                                            .padding(8.dp),
+                                            .clickableOverlay { onOpenBook(it) }
+                                            .padding(vertical = 8.dp, horizontal = 16.dp),
                                     )
                                 }
                                 BookItem(
@@ -122,87 +130,84 @@ fun HomePage(
 //                                    badge = "+${publications.books.size - numBooks - 1}",
                                     size = BookItemSize.Medium,
                                     modifier = Modifier
-                                        .clickable { onNavigateToLibrary() }
-                                        .padding(8.dp),
+                                        .clickableOverlay { onNavigateToLibrary() }
+                                        .padding(vertical = 8.dp, horizontal = 16.dp),
                                 )
                             }
                         }
                     }
-
                     false -> Text(text = "No books found")
                 }
             }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    }
+}
+
+@Composable
+private fun HomeBottomBar(
+    modifier: Modifier = Modifier,
+    onNavigateToApps: () -> Unit,
+) {
+    val isPopupOpen = remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val time = currentTimeAsState()
+        val formatter = SimpleDateFormat("h:mm a", java.util.Locale.ROOT)
+        ExactText(
+            text = formatter.format(time.value),
+        )
+
+        val batteryState = currentBatteryAsState()
+        val wifiState = wifiSignalAsState()
+        BiblioButton(
+            onClick = { isPopupOpen.value = true },
+            style = ButtonStyle.Outline,
         ) {
-            val time = currentTimeAsState()
-            val formatter = SimpleDateFormat("h:mm a", java.util.Locale.ROOT)
-            ExactText(
-                text = formatter.format(time.value),
+            Icon(
+                imageVector = PhosphorIcons.Regular.Slidershorizontal,
+                contentDescription = "Settings icon",
+                modifier = Modifier.size(16.dp)
             )
+            Icon(
+                imageVector = wifiState.value.toIcon(),
+                contentDescription = wifiState.value.strengthDescription(),
+                modifier = Modifier.size(16.dp),
+            )
+            ExactText(
+                text = batteryState.value.toPercentString(),
+                style = BiblioTheme.typography.caption
+            )
+            Icon(
+                imageVector = batteryState.value.toIcon(),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        }
 
-            val batteryState = currentBatteryAsState()
-            val wifiState = wifiSignalAsState()
-            BiblioButton(
-                onClick = { onNavigateToTest() },
-                style = ButtonStyle.Outline,
-            ) {
-                Icon(
-                    imageVector = PhosphorIcons.Regular.Slidershorizontal,
-                    contentDescription = "Settings icon",
-                    modifier = Modifier.size(16.dp)
-                )
-                Icon(
-                    imageVector = when(wifiState.value) {
-                        0 -> PhosphorIcons.Regular.Wifinone
-                        1 -> PhosphorIcons.Regular.Wifilow
-                        2 -> PhosphorIcons.Regular.Wifimedium
-                        else -> PhosphorIcons.Regular.Wifihigh
-                    },
-                    contentDescription = "Wifi strength is ${when(wifiState.value) {
-                        0 -> "very low"
-                        1 -> "low"
-                        2 -> "medium"
-                        else -> "strong"
-                    }}",
-                    modifier = Modifier.size(16.dp),
-                )
-                ExactText(
-                    when(val percent = batteryState.value.percent) {
-                        null -> "..."
-                        else -> "${Math.round(percent * 100)}%"
-                    },
-                    style = BiblioTheme.typography.caption
-                )
-                Icon(
-                    imageVector = when(batteryState.value.isCharging) {
-                        true -> PhosphorIcons.Regular.Batterycharging
-                        false -> when(val percent = batteryState.value.percent) {
-                            null -> PhosphorIcons.Regular.Batterycharging
-                            in 0.85f..1.0f-> PhosphorIcons.Regular.Batteryfull
-                            in 0.65f..0.85f -> PhosphorIcons.Regular.Batteryhigh
-                            in 0.4f..0.65f -> PhosphorIcons.Regular.Batterymedium
-                            in 0.05f..0.4f -> PhosphorIcons.Regular.Batterylow
-                            else -> PhosphorIcons.Regular.Batteryempty
-                        }
-                    },
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
+        Spacer(modifier = Modifier.weight(1f))
 
-            Spacer(modifier = Modifier.weight(1f))
+        BiblioButton(
+            onClick = onNavigateToApps,
+            style = ButtonStyle.Outline,
+            text = "Apps",
+            icon = PhosphorIcons.Regular.Squaresfour
+        )
+    }
 
-            BiblioButton(
-                onClick = onNavigateToApps,
-                style = ButtonStyle.Outline,
-                text = "Apps",
-                icon = PhosphorIcons.Regular.Squaresfour
+    if (isPopupOpen.value) {
+        Popup(
+            alignment = Alignment.BottomCenter,
+            offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
+            onDismissRequest = { isPopupOpen.value = false },
+        ) {
+            SettingsPopup(
+                modifier = Modifier.padding(16.dp)
             )
         }
     }

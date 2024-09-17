@@ -6,6 +6,12 @@ import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
 import android.renderscript.ScriptIntrinsicBlur
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +33,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +57,7 @@ import androidx.compose.ui.unit.min
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BookCover
 import com.andb.apps.biblio.data.BookProgress
+import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.common.skew
@@ -103,21 +114,49 @@ private fun BookItem(
         BookItemSize.Large -> 1 / 20.0
     }
 
+    val spineInsetMargin = when(size) {
+        BookItemSize.Small -> 0.dp
+        BookItemSize.Medium -> 2.dp
+        BookItemSize.Large -> 4.dp
+    }
+
     val pages = when(coverInfo) {
         is BookItemInfo.Custom -> 300
         is BookItemInfo.Pub -> coverInfo.publication.length ?: 300
     }
 
-    val spineWidth = ((pages * spineWidthMultiplier) + 2.0).dp
+    val spineWidth = ((pages * spineWidthMultiplier) + 2.0).dp + spineInsetMargin
     val cover = when {
         coverInfo is BookItemInfo.Pub && coverInfo.publication.cover is BookCover.Available -> coverInfo.publication.cover
         else -> null
     }
 
+    val blurredSpine = remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(cover) {
+        blurredSpine.value = when(cover) {
+            null -> null
+            else -> {
+                val blurred = (0 until 4).fold(cover.image) { acc, _ ->
+                    acc.blur(context, 25f)
+                }
+                val spineResized = Bitmap.createScaledBitmap(
+                    blurred,
+                    with(density) { spineWidth.toPx() }.toInt(),
+                    with(density) { height.toPx() }.toInt(),
+                    false
+                ).flipHorizontally()
+                val spineBlurred = (0 until 4).fold(spineResized) { acc, _ ->
+                    acc.blur(context, 25f)
+                }
+                spineBlurred.asImageBitmap()
+            }
+        }
+    }
+
     Row(
         modifier
             .height(IntrinsicSize.Max)
-//            .skew(yDeg = -3.0)
+            .skew(yDeg = -2.5)
     ) {
         Box(
             Modifier
@@ -125,31 +164,13 @@ private fun BookItem(
                 .skew(yDeg = 55.0)
                 .width(spineWidth)
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(bottomStart = 12.dp))
-                .then(when (cover) {
+                .clip(RoundedCornerShape(bottomStart = 12.dp, topStart = spineInsetMargin))
+                .then(when (val spine = blurredSpine.value) {
                     null -> Modifier.background(BiblioTheme.colors.onBackgroundTertiary)
-                    else -> {
-                        val blurred = remember(cover) {
-                            val blurred = (0 until 4).fold(cover.image) { acc, _ ->
-                                acc.blur(context, 25f)
-                            }
-                            val spineResized = Bitmap.createScaledBitmap(
-                                blurred,
-                                with(density) { spineWidth.toPx() }.toInt(),
-                                with(density) { height.toPx() }.toInt(),
-                                false
-                            ).flipHorizontally()
-                            val spineBlurred = (0 until 4).fold(spineResized) { acc, _ ->
-                                acc.blur(context, 25f)
-                            }
-                            spineBlurred.asImageBitmap()
-                        }
-                        Modifier.drawBehind {
-                            drawImage(blurred)
-                        }
-                    }
-                })
+                    else -> Modifier.drawBehind { drawImage(spine) } }
+                )
         )
+
         Column(
             Modifier.width(IntrinsicSize.Max)
         ) {
@@ -171,6 +192,7 @@ private fun BookItem(
                         .skew(xDeg = 55.0)
                         .height(spineWidth)
                         .fillMaxWidth()
+                        .then(Modifier.padding(top = spineInsetMargin / 2, end = spineInsetMargin))
                         .background(pagesGradient)
                 )
                 if(
@@ -179,13 +201,16 @@ private fun BookItem(
                     && size != BookItemSize.Small
                 ) {
                     val percent = coverInfo.publication.progress.percent
-
+                    val bookmarkOffset = when(size) {
+                        BookItemSize.Large -> 16.dp
+                        else -> 8.dp
+                    }
                     Row(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .wrapContentHeight(align = Alignment.Bottom, unbounded = true)
                             .offset(
-                                x = -(8.dp + (spineWidth * percent.toFloat())),
+                                x = -(bookmarkOffset + (spineWidth * percent.toFloat()) * 0.8f),
                                 y = -(spineWidth * percent.toFloat() * 0.9f),
                             )
                             .background(
@@ -201,35 +226,61 @@ private fun BookItem(
                                     else -> 4.dp
                                 },
                                 vertical = when(size){
-                                    BookItemSize.Large -> 2.dp
+                                    BookItemSize.Large -> 1.dp
                                     else -> 0.dp
                                 }
                             ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ExactText(
-                            text = "${(percent * 100).roundToInt()}%",
-                            color = BiblioTheme.colors.background,
-                            style = when(size){
-                                BookItemSize.Large -> BiblioTheme.typography.body
-                                else -> BiblioTheme.typography.caption
-                            }
-                        )
+                        when (LocalSettings.current.settings.common.showNumbers) {
+                            true -> ExactText(
+                                text = "${(percent * 100).roundToInt()}%",
+                                color = BiblioTheme.colors.background,
+                                style = when(size){
+                                    BookItemSize.Large -> BiblioTheme.typography.body
+                                    else -> BiblioTheme.typography.caption
+                                }
+                            )
+                            false -> Spacer(when(size) {
+                                BookItemSize.Large -> Modifier.size(width = 16.dp, height = 12.dp)
+                                else -> Modifier.size(8.dp)
+                            })
+                        }
                     }
                 }
             }
+
+            val coverModifier = Modifier.clip(RoundedCornerShape(
+                topEnd = spineInsetMargin * 2,
+                bottomEnd = spineInsetMargin * 2,
+            ))
             when(cover) {
-                null -> TextCover(coverInfo, size, height)
-                else -> ImageCover(cover, (coverInfo as BookItemInfo.Pub).publication, height)
+                null -> TextCover(
+                    itemInfo = coverInfo,
+                    size = size,
+                    height = height,
+                    modifier = coverModifier,
+                )
+                else -> ImageCover(
+                    cover = cover,
+                    publication = (coverInfo as BookItemInfo.Pub).publication,
+                    height = height,
+                    modifier = coverModifier,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
+private fun TextCover(
+    itemInfo: BookItemInfo,
+    size: BookItemSize,
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .background(BiblioTheme.colors.surface)
             .height(height = height)
             .aspectRatio(DefaultBookAspectRatio)
@@ -291,11 +342,16 @@ private fun TextCover(itemInfo: BookItemInfo, size: BookItemSize, height: Dp) {
 }
 
 @Composable
-fun ImageCover(cover: BookCover.Available, publication: Book, height: Dp) {
+fun ImageCover(
+    cover: BookCover.Available,
+    publication: Book,
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
     Image(
         bitmap = cover.image.asImageBitmap(),
         contentDescription = "Cover of ${publication.title}",
-        modifier = Modifier
+        modifier = modifier
             .height(height)
             .aspectRatio(cover.image.width / cover.image.height.toFloat())
     )
