@@ -93,7 +93,10 @@ fun BiblioButton(
         ButtonStyle.Outline -> CircleShape
     }
 
-    CompositionLocalProvider(LocalContentColor provides BiblioTheme.colors.onBackgroundSecondary) {
+    CompositionLocalProvider(LocalContentColor provides when(enabled) {
+        true -> BiblioTheme.colors.onBackgroundSecondary
+        false -> BiblioTheme.colors.onBackgroundTertiary
+    }) {
         Row(
             modifier = modifier
                 .clickable(

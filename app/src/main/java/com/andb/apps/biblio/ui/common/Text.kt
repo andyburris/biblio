@@ -37,7 +37,7 @@ fun ExactText(
 ) = androidx.compose.material3.Text(
     text = text,
     modifier = modifier
-        .negativePadding(vertical = with(LocalDensity.current) { -(style.fontSize * 0.25).toDp() }),
+        .negativePadding(vertical = with(LocalDensity.current) { -(style.fontSize * 0.35).toDp() }),
     color = color,
     fontSize = fontSize,
     fontStyle = fontStyle,
