@@ -34,7 +34,7 @@ fun ShelfPage(
     onNavigateBack: () -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
-    val items = (books + books + books + books + books + books + books).map { book ->
+    val items = (books).map { book ->
         BiblioPagerItem(
             width = BiblioPagerWidth.Fixed(((0.15.dp) * (book.length ?: DefaultPageLength)).coerceAtLeast(24.dp) + 4.dp),
             content = {
