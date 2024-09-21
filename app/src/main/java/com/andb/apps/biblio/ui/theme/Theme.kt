@@ -22,6 +22,23 @@ private val LightColorScheme = BiblioColorScheme(
 //    onBackgroundTertiary = Color.Black.copy(alpha = 0.3f),
 //    divider = Color.Black.copy(alpha = 0.12f),
     surface = Color.Black.copy(alpha = 0.05f),
+    onPrimary = Color.White,
+    onPrimarySecondary = Color(0xFFBFBFBF),
+)
+
+private val DarkColorScheme = BiblioColorScheme(
+    background = Color.Black,
+    onBackground = Color.White,
+    onBackgroundSecondary = Color(0xFF808080),
+    onBackgroundTertiary = Color(0xFFBFBFBF),
+    divider = Color(0xFFE0E0E0),
+//    surface = Color(0xFFF2F2F2),
+//    onBackgroundSecondary = Color.Black.copy(alpha = 0.5f),
+//    onBackgroundTertiary = Color.Black.copy(alpha = 0.3f),
+//    divider = Color.Black.copy(alpha = 0.12f),
+    surface = Color.Black.copy(alpha = 0.05f),
+    onPrimary = Color.Black,
+    onPrimarySecondary = Color(0xFFBFBFBF),
 )
 
 private object NoRipple : RippleTheme {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,8 +32,8 @@ import com.adamglin.phosphoricons.regular.Caretleft
 import com.adamglin.phosphoricons.regular.Caretright
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
-class BiblioPagerState<T>(
-    private val items: List<BiblioPagerItem<T>>,
+class BiblioPagerState(
+    private val items: List<BiblioPagerItem>,
     private val minRowHeight: Dp,
     private val containerSize: Pair<Dp, Dp>,
     initialPageIndex: Int,
@@ -41,9 +42,14 @@ class BiblioPagerState<T>(
     private val currentPages = derivedStateOf { items.paginate(containerSize.first, containerSize.second, minRowHeight) }
 
     val currentPageIndex = derivedStateOf { currentPageIndexState.intValue }
-    val currentPage = derivedStateOf { currentPages.value[currentPageIndexState.intValue] }
+    val currentPage = derivedStateOf { currentPages.value.getOrNull(currentPageIndexState.intValue) }
     val totalPages = derivedStateOf { currentPages.value.size }
-    val totalItems get() = derivedStateOf { currentPages.value.sumOf { it.rows.sumOf { it.size } } }
+    val currentItemRange = derivedStateOf {
+        val start = currentPages.value.take(currentPageIndexState.intValue).sumOf { it.rows.sumOf { it.items.size } }
+        val end = start + (currentPages.value.getOrNull(currentPageIndexState.intValue)?.rows?.sumOf { it.items.size } ?: 0)
+        start until end
+    }
+    val totalItems get() = derivedStateOf { currentPages.value.sumOf { it.rows.sumOf { it.items.size } } }
     val canGoBack = derivedStateOf { currentPageIndexState.intValue > 0 }
     val canGoForward = derivedStateOf { currentPageIndexState.intValue < totalPages.value - 1 }
 
@@ -61,36 +67,47 @@ class BiblioPagerState<T>(
         }
     }
 }
-data class BiblioPagerItem<T>(
-    val value: T,
+data class BiblioPagerItem(
     val width: BiblioPagerWidth,
-    val content: @Composable () -> Unit,
+    val content: @Composable (BiblioPagerState) -> Unit,
+    val includeInCount: Boolean = true,
 )
 sealed class BiblioPagerWidth {
     abstract val minWidth: Dp
     data class Fixed(val width: Dp) : BiblioPagerWidth() {
         override val minWidth: Dp = width
     }
-    data class Fill(val min: Dp) : BiblioPagerWidth() {
+    data class Dynamic(val min: Dp) : BiblioPagerWidth() {
         override val minWidth: Dp = min
+    }
+    data class Fill(val overrideRowHeight: Dp? = null) : BiblioPagerWidth() {
+        override val minWidth: Dp = (-1).dp
     }
 }
 
 private val BottomBarHeight = 64.dp
 @Composable
-fun <T> BiblioPager(
-    items: List<BiblioPagerItem<T>>,
+fun  BiblioPager(
+    items: List<BiblioPagerItem>,
     minRowHeight: Dp,
     modifier: Modifier = Modifier,
     initialPageIndex: Int = 0,
-    bottomBar: @Composable (BiblioPagerState<T>) -> Unit
+    header: @Composable (BiblioPagerState) -> Dp = { 0.dp },
+    bottomBar: @Composable (BiblioPagerState) -> Unit,
+    row: @Composable (row: BiblioPagerRow, modifier: Modifier, content: @Composable RowScope.() -> Unit) -> Unit = { items, modifier, content ->
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            content = content,
+        )
+    },
 ) {
 
     BoxWithConstraints(
         modifier = modifier,
     ) {
         val pagerSize = with(LocalDensity.current) { constraints.maxWidth.toDp() to (constraints.maxHeight.toDp() - BottomBarHeight) }
-        val pagerState = remember(items, minRowHeight) { BiblioPagerState<T>(items, minRowHeight, pagerSize, initialPageIndex) }
+        val pagerState = remember(items, minRowHeight) { BiblioPagerState(items, minRowHeight, pagerSize, initialPageIndex) }
 
         BiblioScaffold(
             modifier = Modifier.fillMaxSize(),
@@ -103,24 +120,28 @@ fun <T> BiblioPager(
             Column(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                currentPage.rows.forEach {
-                    Row(
-                        modifier = Modifier
+                header(pagerState)
+                currentPage?.rows?.forEach { row ->
+                    val rowHeight = (row.items.firstOrNull()?.width as? BiblioPagerWidth.Fill)
+                        ?.overrideRowHeight
+                        ?: minRowHeight
+                    row(row,
+                        Modifier
                             .then(when(currentPage.fillsHeight) {
-                                true -> Modifier.weight(1f).heightIn(min = minRowHeight)
-                                false -> Modifier.height(minRowHeight)
+                                true -> Modifier.weight(1f).heightIn(min = rowHeight)
+                                false -> Modifier.height(rowHeight)
                             })
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        it.forEach {
+                        row.items.forEach {
                             Box(
                                 modifier = when(it.width) {
                                     is BiblioPagerWidth.Fixed -> Modifier.width(it.width.width)
-                                    is BiblioPagerWidth.Fill -> Modifier.weight(1f).widthIn(min = it.width.min)
+                                    is BiblioPagerWidth.Dynamic -> Modifier.weight(1f).widthIn(min = it.width.min)
+                                    is BiblioPagerWidth.Fill -> Modifier.weight(1f)
                                 }
                             ) {
-                                it.content()
+                                it.content(pagerState)
                             }
                         }
                     }
@@ -130,50 +151,86 @@ fun <T> BiblioPager(
     }
 }
 
-data class BiblioPagerPage<T>(
-    val rows: List<List<BiblioPagerItem<T>>>,
+data class BiblioPagerPage(
+    val rows: List<BiblioPagerRow>,
     val fillsHeight: Boolean,
 )
-private fun <T> List<BiblioPagerItem<T>>.paginate(containerWidth: Dp, containerHeight: Dp, minRowHeight: Dp): List<BiblioPagerPage<T>> {
-    val allRows = this.fold(listOf(emptyList<BiblioPagerItem<T>>() to 0.dp)) { acc, biblioPagerItem ->
+data class BiblioPagerRow(
+    val items: List<BiblioPagerItem>,
+    val fillsWidth: Boolean,
+)
+private fun  List<BiblioPagerItem>.paginate(containerWidth: Dp, containerHeight: Dp, minRowHeight: Dp): List<BiblioPagerPage> {
+    val allRows = this.fold(listOf(emptyList<BiblioPagerItem>() to 0.dp)) { acc, biblioPagerItem ->
         val (currentRow, currentRowWidth) = acc.last()
-        if (currentRowWidth > containerWidth) {
-            return@fold acc + (listOf(biblioPagerItem) to biblioPagerItem.width.minWidth)
-        }
-        when {
-            (currentRowWidth + biblioPagerItem.width.minWidth) <= containerWidth ->
-                acc.dropLast(1) + (currentRow + biblioPagerItem to currentRowWidth + biblioPagerItem.width.minWidth)
 
+        val isFill = biblioPagerItem.width is BiblioPagerWidth.Fill
+        val mustOverflow = currentRowWidth > containerWidth
+        val fitsOnCurrent = (currentRowWidth + biblioPagerItem.width.minWidth) <= containerWidth
+
+        when {
+            isFill -> acc + (listOf(biblioPagerItem) to containerWidth)
+            mustOverflow -> acc + (listOf(biblioPagerItem) to biblioPagerItem.width.minWidth)
+            fitsOnCurrent -> acc.dropLast(1) + (currentRow + biblioPagerItem to currentRowWidth + biblioPagerItem.width.minWidth)
             else -> acc + (listOf(biblioPagerItem) to biblioPagerItem.width.minWidth)
         }
-    }.map { it.first }
-    val rowsPerPage: Int = (containerHeight / minRowHeight).toInt().coerceAtLeast(1)
-    return allRows.chunked(rowsPerPage).map { BiblioPagerPage(it, it.size == rowsPerPage) }
+
+    }
+        .filter { it.first.isNotEmpty() }
+        .let {
+            val lastRowIndex = it.size - 1
+            it.mapIndexed { index, (items, width) ->
+                BiblioPagerRow(items, index != lastRowIndex)
+            }
+        }
+
+
+    val pages = allRows.fold(listOf(emptyList<BiblioPagerRow>() to 0.dp)) { acc, row ->
+        val (currentRows, currentHeight) = acc.last()
+
+        val rowHeight = (row.items.firstOrNull()?.width as? BiblioPagerWidth.Fill)
+            ?.overrideRowHeight
+            ?: minRowHeight
+
+        val mustOverflow = rowHeight > containerHeight
+        val fitsOnCurrent = currentHeight + rowHeight <= containerHeight
+
+        when {
+            mustOverflow -> acc + (listOf(row) to rowHeight)
+            fitsOnCurrent -> acc.dropLast(1) + ((currentRows.plusElement(row)) to (currentHeight + rowHeight))
+            else -> acc + (listOf(row) to rowHeight)
+        }
+    }
+        .filter { it.first.isNotEmpty() }
+        .map { BiblioPagerPage(it.first, it.second >= (containerHeight - minRowHeight)) }
+    return pages
 }
 
 @Composable
 fun BiblioPageSwitcher(
-    pagerState: BiblioPagerState<*>,
+    pagerState: BiblioPagerState,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy((-8).dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BiblioButton(
-            onClick = { pagerState.previousPage() },
-            icon = PhosphorIcons.Regular.Caretleft,
-            enabled = pagerState.canGoBack.value,
-        )
-        ExactText(
-            text = "Page ${pagerState.currentPageIndex.value + 1}/${pagerState.totalPages.value}",
-            color = BiblioTheme.colors.onBackgroundSecondary,
-        )
-        BiblioButton(
-            onClick = { pagerState.nextPage() },
-            icon = PhosphorIcons.Regular.Caretright,
-            enabled = pagerState.canGoForward.value,
-        )
+    when(pagerState.totalPages.value) {
+        0, 1 -> {}
+        else -> Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy((-8).dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BiblioButton(
+                onClick = { pagerState.previousPage() },
+                icon = PhosphorIcons.Regular.Caretleft,
+                enabled = pagerState.canGoBack.value,
+            )
+            ExactText(
+                text = "Page ${pagerState.currentPageIndex.value + 1}/${pagerState.totalPages.value}",
+                color = BiblioTheme.colors.onBackgroundSecondary,
+            )
+            BiblioButton(
+                onClick = { pagerState.nextPage() },
+                icon = PhosphorIcons.Regular.Caretright,
+                enabled = pagerState.canGoForward.value,
+            )
+        }
     }
 }

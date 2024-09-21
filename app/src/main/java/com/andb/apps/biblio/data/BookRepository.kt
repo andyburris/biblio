@@ -7,6 +7,7 @@ import android.os.Environment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.core.content.FileProvider
@@ -68,10 +69,7 @@ class BookRepository(
                         identifier = book.identifier,
                         title = book.title,
                         authors = book.authors,
-                        cover = when(val cover = coverStorage.getCover(book.id)) {
-                            null -> BookCover.Unavailable
-                            else -> BookCover.Available(cover)
-                        },
+                        cover = coverStorage.getCover(book.id),
                         progress = book.getProgressFor(progressFiles),
                         length = book.length?.toInt(),
                         filePaths = book.filePaths,
@@ -155,7 +153,7 @@ class BookRepository(
         loadedBooks.zip(savedBooks).map { (pub, book) ->
             coroutineScope.async(Dispatchers.IO) {
                 val cover = pub.first.cover()
-                if (cover != null) coverStorage.saveCover(book.id, cover)
+                if (cover != null) coverStorage.saveCover(book, cover)
             }
         }.awaitAll()
 
@@ -214,6 +212,7 @@ sealed class BooksState {
 fun BookRepository.booksAsState(
     permissionState: StoragePermissionState,
 ): State<BooksState> {
+    val isFirstLoad = remember { mutableStateOf(true) }
     val allBooks = remember { mutableStateOf<BooksState>(BooksState.Loading) }
 
     LaunchedEffect(permissionState) {
@@ -232,15 +231,27 @@ fun BookRepository.booksAsState(
         withContext(Dispatchers.IO) {
             while(true){
                 when (val existingBooks = allBooks.value) {
-                    is BooksState.Loaded -> refreshPublicationsFromStorage(existingBooks.allBooks)
-                    else -> {}
+                    is BooksState.Loaded -> {
+                        refreshPublicationsFromStorage(existingBooks.allBooks)
+                        delay(10000)
+                    }
+                    else -> {
+                        delay(500)
+                    }
                 }
-                delay(10000)
             }
         }
     }
 
-    return allBooks
+    return remember {
+        derivedStateOf {
+            val isStillLoading = isFirstLoad.value && allBooks.value.let { it is BooksState.Loaded && it.allBooks.isEmpty() }
+            when {
+                isStillLoading -> BooksState.Loading
+                else -> allBooks.value
+            }
+        }
+    }
 }
 
 private val backburnerTime = 90.days

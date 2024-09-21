@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 
 sealed class BookCover {
     data object Unavailable : BookCover()
-    data class Available(val image: Bitmap) : BookCover()
+    data class Available(val image: Bitmap, val blurredSpine: Bitmap) : BookCover()
 }
 data class Book(
     val id: String,

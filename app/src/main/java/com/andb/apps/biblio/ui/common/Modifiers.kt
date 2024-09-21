@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
@@ -14,6 +15,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import com.andb.apps.biblio.ui.theme.OverlayIndication
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 fun Modifier.border(
     color: Color,
@@ -68,3 +72,22 @@ fun Modifier.clickableOverlay(onClick: () -> Unit) = this.clickable(
     indication = OverlayIndication,
     onClick = onClick,
 )
+
+fun Modifier.rotateWithBounds(degrees: Float) = this.layout { measurable, constraints ->
+    val angle = Math.toRadians(degrees.toDouble())
+    val rotatedConstraints = constraints.copy(
+        minWidth = (constraints.minWidth * abs(cos(angle)) + constraints.minHeight * abs(sin(angle))).toInt(),
+        minHeight = (constraints.minWidth * abs(sin(angle)) + constraints.minHeight * abs(cos(angle))).toInt(),
+        maxWidth = (constraints.maxWidth * abs(cos(angle)) + constraints.maxHeight * abs(sin(angle))).toInt(),
+        maxHeight = (constraints.maxWidth * abs(sin(angle)) + constraints.maxHeight * abs(cos(angle))).toInt()
+    )
+    val placeable = measurable.measure(rotatedConstraints)
+    val rotatedHeight = (placeable.width * Math.abs(Math.sin(angle)) + placeable.height * Math.abs(Math.cos(angle))).toFloat()
+    val rotatedWidth = (placeable.width * Math.abs(Math.cos(angle)) + placeable.height * Math.abs(Math.sin(angle))).toFloat()
+    layout(width = rotatedWidth.toInt(), height = rotatedHeight.toInt()) {
+        placeable.placeRelative(
+            x = ((rotatedWidth - placeable.width) / 2).toInt(),
+            y = ((rotatedHeight - placeable.height) / 2).toInt()
+        )
+    }
+}.rotate(degrees)

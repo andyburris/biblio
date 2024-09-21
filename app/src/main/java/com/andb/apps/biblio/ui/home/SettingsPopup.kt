@@ -55,6 +55,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SettingsPopup(
     modifier: Modifier = Modifier,
+    onOpenTestScreen: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -146,7 +147,7 @@ fun SettingsPopup(
         ) {
             SettingsPopupHeader(
                 title = "Biblio Settings • Home",
-                onMore = {},
+                onMore = { onOpenTestScreen()},
             )
         }
         item { SettingsItem(

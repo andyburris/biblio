@@ -58,7 +58,7 @@ fun HomePage(
 ) {
     BiblioScaffold(
         modifier = modifier,
-        bottomBar = { HomeBottomBar(onNavigateToApps = onNavigateToApps) },
+        bottomBar = { HomeBottomBar(onNavigateToApps = onNavigateToApps, onNavigateToTest = onNavigateToTest) },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -147,6 +147,7 @@ fun HomePage(
 private fun HomeBottomBar(
     modifier: Modifier = Modifier,
     onNavigateToApps: () -> Unit,
+    onNavigateToTest: () -> Unit,
 ) {
     val isPopupOpen = remember { mutableStateOf(false) }
 
@@ -207,7 +208,8 @@ private fun HomeBottomBar(
             onDismissRequest = { isPopupOpen.value = false },
         ) {
             SettingsPopup(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                onOpenTestScreen = onNavigateToTest,
             )
         }
     }

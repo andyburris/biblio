@@ -9,4 +9,6 @@ data class BiblioColorScheme(
     val onBackgroundTertiary: Color,
     val divider: Color,
     val surface: Color,
+    val onPrimary: Color,
+    val onPrimarySecondary: Color,
 )

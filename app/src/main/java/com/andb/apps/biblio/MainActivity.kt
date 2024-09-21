@@ -21,7 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.andb.apps.biblio.data.BookRepository
+import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.data.SettingsState
 import com.andb.apps.biblio.data.SyncServer
@@ -33,6 +35,8 @@ import com.andb.apps.biblio.ui.apps.rememberAppsAsState
 import com.andb.apps.biblio.ui.home.HomePage
 import com.andb.apps.biblio.ui.home.rememberStoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryPage
+import com.andb.apps.biblio.ui.library.LibraryShelf
+import com.andb.apps.biblio.ui.library.ShelfPage
 import com.andb.apps.biblio.ui.test.TestPage
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
@@ -96,16 +100,42 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable("library") {
-                            Scaffold (
-                                Modifier.fillMaxSize(),
-                                containerColor = BiblioTheme.colors.background,
-                            ) { innerPadding ->
-                                LibraryPage(
-                                    booksState = booksState.value,
-                                    modifier = Modifier.padding(innerPadding),
-                                    onNavigateBack = { navController.popBackStack() },
-                                    onOpenBook = { bookRepository.openBook(it) },
-                                )
+                            when(val books = booksState.value) {
+                                is BooksState.Loaded -> Scaffold (
+                                    Modifier.fillMaxSize(),
+                                    containerColor = BiblioTheme.colors.background,
+                                ) { innerPadding ->
+                                    LibraryPage(
+                                        booksState = books,
+                                        modifier = Modifier.padding(innerPadding),
+                                        onNavigateBack = { navController.popBackStack() },
+                                        onOpenShelf = { navController.navigate("shelf/${it.name}") },
+                                        onOpenBook = { bookRepository.openBook(it) },
+                                    )
+                                }
+                                else -> navController.popBackStack()
+                            }
+                        }
+                        composable("shelf/{shelf}") { backStackEntry ->
+                            val shelf = backStackEntry.arguments?.getString("shelf")?.let { LibraryShelf.valueOf(it) } ?: return@composable
+                            when(val books = booksState.value) {
+                                is BooksState.Loaded -> Scaffold (
+                                    Modifier.fillMaxSize(),
+                                    containerColor = BiblioTheme.colors.background,
+                                ) { innerPadding ->
+                                    ShelfPage(
+                                        shelf = shelf,
+                                        books = when(shelf) {
+                                            LibraryShelf.CurrentlyReading -> books.currentlyReading
+                                            LibraryShelf.DoneOrBackburner -> books.doneOrBackburner
+                                            LibraryShelf.UpNext -> books.unread
+                                        },
+                                        modifier = Modifier.padding(innerPadding),
+                                        onNavigateBack = { navController.popBackStack() },
+                                        onOpenBook = { bookRepository.openBook(it) },
+                                    )
+                                }
+                                else -> navController.popBackStack()
                             }
                         }
                         composable("test") {
@@ -114,7 +144,6 @@ class MainActivity : ComponentActivity() {
                                 containerColor = BiblioTheme.colors.background,
                             ) { innerPadding ->
                                 TestPage(
-                                    server = server,
                                     modifier = Modifier.padding(innerPadding),
                                     onNavigateBack = { navController.popBackStack() },
                                 )

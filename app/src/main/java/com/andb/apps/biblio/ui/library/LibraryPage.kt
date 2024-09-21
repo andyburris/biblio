@@ -31,17 +31,27 @@ import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
 import com.andb.apps.biblio.ui.common.BiblioButton
+import com.andb.apps.biblio.ui.common.BiblioPager
+import com.andb.apps.biblio.ui.common.BiblioPagerItem
+import com.andb.apps.biblio.ui.common.BiblioPagerWidth
 import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
+enum class LibraryShelf(val title: String) {
+    CurrentlyReading("Currently Reading"),
+    UpNext("Up Next"),
+    DoneOrBackburner("Already Read & Backburner"),
+}
+
 @Composable
 fun LibraryPage(
-    booksState: BooksState,
+    booksState: BooksState.Loaded,
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
+    onOpenShelf: (LibraryShelf) -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
     BiblioScaffold(
@@ -50,49 +60,60 @@ fun LibraryPage(
             BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack)
         }
     ) {
-        when(booksState) {
-            BooksState.Loading -> {}
-            BooksState.NoPermission -> {}
-
-            is BooksState.Loaded -> BoxWithConstraints {
-                val height = constraints.maxHeight
-                val headerAndPaddingHeights = (42.dp + 24.dp) * 3
-                val rowHeight = 66.dp
-                val maxVisibleRows = (with(LocalDensity.current) { height.toDp() } - headerAndPaddingHeights) / rowHeight
-//                Column(
-//                ) {
-//                    LibrarySection(
-//                        title = "Currently Reading",
-//                        books = booksState.currentlyReading,
-//                        onOpenBook = onOpenBook,
-//                        onExpandSection = {},
-//                    )
-//                    LibrarySection(
-//                        title = "Up Next",
-//                        books = booksState.unread,
-//                        onOpenBook = onOpenBook,
-//                        onExpandSection = {},
-//                    )
-//                    LibrarySection(
-//                        title = "Already Read & Backburner",
-//                        books = booksState.doneOrBackburner,
-//                        onOpenBook = onOpenBook,
-//                        onExpandSection = {},
-//                    )
-//                }
-                TempLibraryGrid(
-                    booksState = booksState,
-                    onOpenBook = onOpenBook,
-                )
-            }
-        }
+        TempLibraryGrid(
+            booksState = booksState,
+            onOpenBook = onOpenBook,
+            onOpenShelf = onOpenShelf,
+        )
     }
+//            val headers = listOf(
+//                BiblioPagerItem(BiblioPagerWidth.Fill) {
+//                    LibrarySectionHeader(
+//                        "Currently Reading",
+//                        booksState.currentlyReading,
+//                        onExpandSection = { onOpenShelf("currentlyReading") },
+//                    )
+//                },
+//                BiblioPagerItem(BiblioPagerWidth.Fill) {
+//                    LibrarySectionHeader(
+//                        "Up Next",
+//                        booksState.unread,
+//                        onExpandSection = { onOpenShelf("unread") },
+//                    )
+//                },
+//                BiblioPagerItem(BiblioPagerWidth.Fill) {
+//                    LibrarySectionHeader(
+//                        "Already Read & Backburner",
+//                        booksState.doneOrBackburner,
+//                        onExpandSection = { onOpenShelf("doneOrBackburner") },
+//                    )
+//                },
+//            )
+//            val items =
+//                headers.slice(0..0) +
+//                booksState.currentlyReading.map { BiblioPagerItem(BiblioPagerWidth.Fixed()) { LibrarySpine(it) } } +
+//                headers.slice(1..1) +
+//                booksState.unread.map { BiblioPagerItem(BiblioPagerWidth.Fill) { LibrarySpine(it) } } +
+//
+//            BiblioPager(
+//                items,
+//                modifier = modifier,
+//                bottomBar = { pagerState ->
+//                    BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack)
+//                }
+//            ) {
+//                TempLibraryGrid(
+//                    booksState = booksState,
+//                    onOpenBook = onOpenBook,
+//                )
+//            }
 }
 
 @Composable
 private fun TempLibraryGrid(
     booksState: BooksState.Loaded,
     modifier: Modifier = Modifier,
+    onOpenShelf: (LibraryShelf) -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -105,7 +126,7 @@ private fun TempLibraryGrid(
                 title = "Currently Reading",
                 books = booksState.currentlyReading,
                 modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
-                onExpandSection = {},
+                onExpandSection = { onOpenShelf(LibraryShelf.CurrentlyReading) },
             )
         }
         items(booksState.currentlyReading) {
@@ -122,7 +143,7 @@ private fun TempLibraryGrid(
                 title = "Up Next",
                 books = booksState.unread,
                 modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
-                onExpandSection = {},
+                onExpandSection = { onOpenShelf(LibraryShelf.UpNext) },
             )
         }
         items(booksState.unread) {
@@ -139,7 +160,7 @@ private fun TempLibraryGrid(
                 title = "Already Read & Backburner",
                 books = booksState.doneOrBackburner,
                 modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
-                onExpandSection = {},
+                onExpandSection = { onOpenShelf(LibraryShelf.DoneOrBackburner) },
             )
         }
         items(booksState.doneOrBackburner) {

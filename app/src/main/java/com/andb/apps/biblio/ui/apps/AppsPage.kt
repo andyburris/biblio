@@ -62,20 +62,19 @@ fun AppsPage(
     when(appsState) {
         is AppsState.Loaded -> BiblioPager(
             modifier = modifier,
-            items = appsState.apps.map {
+            items = appsState.apps.map { app ->
                 BiblioPagerItem(
-                    value = it,
-                    width = BiblioPagerWidth.Fill(min = 144.dp),
+                    width = BiblioPagerWidth.Dynamic(min = 144.dp),
                     content = {
                         AppItem(
-                            app = it,
+                            app = app,
                             modifier = Modifier
-                                .clickable { launchApp(it, context) }
+                                .clickable { launchApp(app, context) }
                                 .fillMaxSize(),
                             isEditing = isEditing.value,
                             onPin = { TODO() },
-                            onAppInfo = { appsState.openInfo(it) },
-                            onUninstall = { appsState.uninstall(it) },
+                            onAppInfo = { appsState.openInfo(app) },
+                            onUninstall = { appsState.uninstall(app) },
                         )
                     }
                 )

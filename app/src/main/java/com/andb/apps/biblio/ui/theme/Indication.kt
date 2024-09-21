@@ -67,7 +67,7 @@ private class DarkenIndicationNode(
     }
 }
 
-class DarkenIndicationNodeFactory(val darkenPercent: Float = 0.5f) : IndicationNodeFactory {
+class DarkenIndicationNodeFactory(private val darkenPercent: Float) : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode {
         return DarkenIndicationNode(interactionSource, darkenPercent)
     }
