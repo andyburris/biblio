@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
@@ -37,11 +38,11 @@ import com.andb.apps.biblio.ui.theme.BiblioTheme
 class BiblioPagerState(
     private val items: List<BiblioPagerItem>,
     private val minRowHeight: Dp,
-    private val containerSize: Pair<Dp, Dp>,
+    val containerSize: DpSize,
     initialPageIndex: Int,
 ) {
     private val currentPageIndexState = mutableIntStateOf(initialPageIndex)
-    private val currentPages = derivedStateOf { items.paginate(containerSize.first, containerSize.second, minRowHeight) }
+    private val currentPages = derivedStateOf { items.paginate(containerSize.width, containerSize.height, minRowHeight) }
 
     val currentPageIndex = derivedStateOf { currentPageIndexState.intValue }
     val currentPage = derivedStateOf { currentPages.value.getOrNull(currentPageIndexState.intValue) }
@@ -146,7 +147,7 @@ fun BiblioPager(
         bottomBar = bottomBar,
         transform = {
             val pagerSize =
-                with(LocalDensity.current) { constraints.maxWidth.toDp() to (constraints.maxHeight.toDp() - BottomBarHeight) }
+                with(LocalDensity.current) { DpSize(constraints.maxWidth.toDp(), (constraints.maxHeight.toDp() - BottomBarHeight)) }
             val pagerState = remember(items, minRowHeight) {
                 BiblioPagerState(
                     items,

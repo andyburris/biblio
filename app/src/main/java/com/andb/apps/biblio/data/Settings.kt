@@ -27,7 +27,17 @@ import kotlinx.coroutines.launch
 import java.io.InputStream
 import java.io.OutputStream
 
-data class SettingState<T>(
+class ToggleableSettingState<T>(
+    name: String, value: T, onUpdate: suspend (T) -> Unit, isActivated: Boolean?, icon: ImageVector, stateDescription: String,
+    val onToggle: suspend ToggleableSettingState<T>.() -> Unit
+) : SettingState<T>(name, value, onUpdate, isActivated, icon, stateDescription) {
+    fun toggle() {
+        CoroutineScope(Dispatchers.IO).launch {
+            onToggle()
+        }
+    }
+}
+open class SettingState<T>(
     val name: String,
     val value: T,
     private val onUpdate: suspend (T) -> Unit,
@@ -52,11 +62,11 @@ data class SettingsState(
     private val onUpdateSettings: suspend (transform: suspend (currentSettings: Settings) -> Settings) -> Settings,
 ) {
     data class CommonSettings(
-        val showNumbers: SettingState<Boolean>,
+        val showNumbers: ToggleableSettingState<Boolean>,
         val syncState: SettingState<SyncInfo>
     )
     val common = CommonSettings(
-        showNumbers = SettingState(
+        showNumbers = ToggleableSettingState(
             name = "Show Numbers",
             value = settings.common.showNumbers,
             onUpdate = {
@@ -66,7 +76,8 @@ data class SettingsState(
             },
             isActivated = settings.common.showNumbers,
             icon = PhosphorIcons.Regular.Percent,
-            stateDescription = if(settings.common.showNumbers) "On" else "Off"
+            stateDescription = if(settings.common.showNumbers) "On" else "Off",
+            onToggle = { update(!value) }
         ),
         syncState = SettingState(
             name = "Sync with reader app",
@@ -83,15 +94,18 @@ data class SettingsState(
             },
             isActivated = settings.common.syncApp != SyncApp.SYNC_APP_NONE,
             icon = PhosphorIcons.Regular.Arrowsclockwise,
-            stateDescription = settings.common.syncApp.name
+            stateDescription = when(settings.common.syncApp) {
+                SyncApp.SYNC_APP_MOON_READER -> "Moon Reader"
+                else -> "None"
+            }
         )
     )
 
     data class LibrarySettings(
-        val view: SettingState<LibraryView>,
+        val view: ToggleableSettingState<LibraryView>,
     )
     val library = LibrarySettings(
-        view = SettingState(
+        view = ToggleableSettingState(
             name = "Library view",
             value = settings.library.view,
             onUpdate = {
@@ -108,7 +122,11 @@ data class SettingsState(
                 LibraryView.LIBRARY_VIEW_GRID -> "Grid"
                 LibraryView.LIBRARY_VIEW_SHELVES -> "Shelves"
                 else -> "Unrecognized"
-            }
+            },
+            onToggle = { update(when(value) {
+                LibraryView.LIBRARY_VIEW_GRID -> LibraryView.LIBRARY_VIEW_SHELVES
+                else -> LibraryView.LIBRARY_VIEW_GRID
+            }) }
         )
     )
 

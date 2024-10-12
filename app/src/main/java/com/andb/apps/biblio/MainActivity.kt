@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
                                         onNavigateBack = { navController.popBackStack() },
                                         onOpenShelf = { navController.navigate("shelf/${it.name}") },
                                         onOpenBook = { bookRepository.openBook(it) },
+                                        onOpenSettings = { navController.navigate("settings") },
                                     )
                                 }
                                 else -> navController.popBackStack()

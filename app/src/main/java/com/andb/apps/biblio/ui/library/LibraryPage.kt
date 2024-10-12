@@ -1,7 +1,10 @@
 package com.andb.apps.biblio.ui.library
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,19 +12,30 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Caretright
+import com.adamglin.phosphoricons.regular.Slidershorizontal
 import com.andb.apps.biblio.LibraryView
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
@@ -35,6 +49,8 @@ import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.common.pager.BiblioPager
 import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
 import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
+import com.andb.apps.biblio.ui.common.rotateWithBounds
+import com.andb.apps.biblio.ui.settings.SettingsPopup
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 enum class LibraryShelf(val title: String) {
@@ -50,14 +66,39 @@ fun LibraryPage(
     onNavigateBack: () -> Unit,
     onOpenShelf: (LibraryShelf) -> Unit,
     onOpenBook: (Book) -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
+    val isPopupOpen = remember { mutableStateOf(false) }
+    val bottomBar: @Composable () -> Unit = { BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack) {
+        if (isPopupOpen.value) {
+            Popup(
+                alignment = Alignment.BottomCenter,
+                offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
+                onDismissRequest = { isPopupOpen.value = false },
+                properties = PopupProperties()
+            ) {
+                LibrarySettingsPopup(Modifier.padding(16.dp), onOpenSettings)
+            }
+        }
+        BiblioButton(
+            style = ButtonStyle.Outline,
+            icon = PhosphorIcons.Regular.Slidershorizontal,
+            onClick = { isPopupOpen.value = true }
+        )
+    } }
     when(LocalSettings.current.settings.library.view) {
         LibraryView.LIBRARY_VIEW_GRID -> BiblioScaffold(
             modifier = modifier,
-            bottomBar = { BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack) },
+            bottomBar = bottomBar,
             content = { TempLibraryGrid(booksState, onOpenBook = onOpenBook, onOpenShelf = onOpenShelf) }
         )
-        LibraryView.LIBRARY_VIEW_SHELVES, LibraryView.UNRECOGNIZED, null -> {}
+        else -> LibraryShelves(
+            booksState = booksState,
+            modifier = modifier,
+            bottomBar = bottomBar,
+            onOpenShelf = onOpenShelf,
+            onOpenBook = onOpenBook,
+        )
     }
 }
 
@@ -77,7 +118,9 @@ private fun TempLibraryGrid(
             LibrarySectionHeader(
                 title = "Currently Reading",
                 books = booksState.currentlyReading,
-                modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 16.dp),
                 onExpandSection = { onOpenShelf(LibraryShelf.CurrentlyReading) },
             )
         }
@@ -94,7 +137,9 @@ private fun TempLibraryGrid(
             LibrarySectionHeader(
                 title = "Up Next",
                 books = booksState.unread,
-                modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 16.dp),
                 onExpandSection = { onOpenShelf(LibraryShelf.UpNext) },
             )
         }
@@ -111,7 +156,9 @@ private fun TempLibraryGrid(
             LibrarySectionHeader(
                 title = "Already Read & Backburner",
                 books = booksState.doneOrBackburner,
-                modifier = Modifier.padding(horizontal = 12.dp).padding(top = 16.dp),
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 16.dp),
                 onExpandSection = { onOpenShelf(LibraryShelf.DoneOrBackburner) },
             )
         }
@@ -125,6 +172,51 @@ private fun TempLibraryGrid(
         }
     }
 }
+
+@Composable
+private fun LibraryShelves(
+    booksState: BooksState.Loaded,
+    modifier: Modifier = Modifier,
+    bottomBar: @Composable () -> Unit,
+    onOpenShelf: (LibraryShelf) -> Unit,
+    onOpenBook: (Book) -> Unit,
+) {
+    BiblioPager(
+        modifier = modifier,
+        items = listOf(
+            BiblioPagerItem(width = BiblioPagerWidth.Fill(), content = {
+                LibrarySection(
+                    title = "Currently Reading",
+                    books = booksState.currentlyReading,
+                    width = it.containerSize.width,
+                    onOpenBook = onOpenBook,
+                    onExpandSection = { onOpenShelf(LibraryShelf.CurrentlyReading) },
+                )
+            }),
+            BiblioPagerItem(width = BiblioPagerWidth.Fill(), content = {
+                LibrarySection(
+                    title = "Up Next",
+                    books = booksState.unread,
+                    width = it.containerSize.width,
+                    onOpenBook = onOpenBook,
+                    onExpandSection = { onOpenShelf(LibraryShelf.UpNext) },
+                )
+            }),
+            BiblioPagerItem(width = BiblioPagerWidth.Fill(), content = {
+                LibrarySection(
+                    title = "Already Read & Backburner",
+                    books = booksState.doneOrBackburner,
+                    width = it.containerSize.width,
+                    onOpenBook = onOpenBook,
+                    onExpandSection = { onOpenShelf(LibraryShelf.DoneOrBackburner) },
+                )
+            }),
+        ),
+        minRowHeight = 200.dp,
+        bottomBar = { bottomBar() },
+    )
+}
+
 @Composable
 private fun LibrarySectionHeader(
     title: String,
@@ -170,33 +262,62 @@ private fun LibrarySectionHeader(
 private fun LibrarySection(
     title: String,
     books: List<Book>,
+    width: Dp,
     modifier: Modifier = Modifier,
     onOpenBook: (Book) -> Unit,
     onExpandSection: () -> Unit,
 ) {
     Column(
-        modifier =  modifier
+        modifier = modifier
             .border(bottom = 1.dp, color = BiblioTheme.colors.divider)
-            .padding(bottom = 8.dp)
     ) {
-        LibrarySectionHeader(title, books, Modifier.padding(horizontal = 24.dp).padding(top = 16.dp), onExpandSection)
-        if(books.isNotEmpty()) {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(200.dp),
-                modifier = Modifier
-                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 16.dp)
-            ) {
-                items(books) {
-                    LibraryItem(
-                        publication = it,
+        LibrarySectionHeader(title, books,
+            Modifier
+                .padding(horizontal = 24.dp)
+                .padding(top = 8.dp, bottom = 4.dp), onExpandSection)
+        Row(
+            Modifier.padding(horizontal = 16.dp)
+        ) {
+            val minMoreWidth = 64.dp
+            val (visibleBooks, visibleBooksWidth) = books.fold(emptyList<Book>() to 0.dp) { (acc, currentWidth), book ->
+                when {
+                    currentWidth + book.spineWidthDp() < width -> (acc + book) to (currentWidth + book.spineWidthDp())
+                    else -> acc to currentWidth
+                }
+            }
+            val withMore = when {
+                visibleBooks.size == books.size -> visibleBooks
+                visibleBooksWidth + minMoreWidth < width -> visibleBooks + null
+                else -> visibleBooks.dropLast(1) + null
+            }
+            withMore.forEach { book ->
+                when(book) {
+                    null -> Column(
+                        modifier = modifier
+                            .clickable(onClick = onExpandSection)
+                            .weight(1f)
+                            .border(1.dp, BiblioTheme.colors.divider, shape = RoundedCornerShape(6.dp))
+                            .background(BiblioTheme.colors.surface, shape = RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(6.dp)),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ExactText(
+                            text = "+${books.size - visibleBooks.size} more",
+                            color = BiblioTheme.colors.onBackgroundSecondary,
+                            modifier = Modifier.padding(8.dp)
+                                .weight(1f)
+                                .rotateWithBounds(90f),
+                        )
+                    }
+                    else -> LibrarySpine(
+                        book = book,
                         modifier = Modifier
-                            .clickable { onOpenBook(it) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .width(book.spineWidthDp())
+                            .clickable { onOpenBook(book) }
+                            .padding(horizontal = 1.dp),
                     )
                 }
             }
-        } else {
-            Spacer(Modifier.height(4.dp))
         }
     }
 }

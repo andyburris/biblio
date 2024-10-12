@@ -21,6 +21,7 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Caretright
 import com.andb.apps.biblio.data.SettingState
+import com.andb.apps.biblio.data.ToggleableSettingState
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
@@ -31,7 +32,6 @@ fun <T> SettingsPopupItem(
     settingState: SettingState<T>,
     modifier: Modifier = Modifier,
     onMore: ((SettingState<T>) -> Unit)? = null,
-    onToggle: ((SettingState<T>) -> Unit)? = onMore,
 ) {
     SettingsPopupItem(
         title = settingState.name,
@@ -40,7 +40,7 @@ fun <T> SettingsPopupItem(
         modifier = modifier,
         state = settingState.stateDescription,
         onMore = onMore?.let { { it(settingState) } },
-        onToggle = onToggle?.let { { it(settingState) } },
+        onToggle = (settingState as? ToggleableSettingState)?.let { { it.toggle() } },
     )
 }
 

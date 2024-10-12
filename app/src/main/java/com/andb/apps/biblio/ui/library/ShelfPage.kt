@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.andb.apps.biblio.data.Book
@@ -26,6 +27,10 @@ import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.home.DefaultPageLength
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
+fun Book.spineWidthDp(): Dp {
+    return ((0.15.dp) * (length ?: DefaultPageLength)).coerceAtLeast(24.dp) + 4.dp
+}
+
 @Composable
 fun ShelfPage(
     shelf: LibraryShelf,
@@ -36,7 +41,7 @@ fun ShelfPage(
 ) {
     val items = books.map { book ->
         BiblioPagerItem(
-            width = BiblioPagerWidth.Fixed(((0.15.dp) * (book.length ?: DefaultPageLength)).coerceAtLeast(24.dp) + 4.dp),
+            width = BiblioPagerWidth.Fixed(book.spineWidthDp()),
             content = {
                 LibrarySpine(
                     book = book,
@@ -84,7 +89,7 @@ private fun ShelfHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
+            .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

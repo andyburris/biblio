@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,7 +124,8 @@ fun HomePage(
                                     size = BookItemSize.Medium,
                                     modifier = Modifier
                                         .clickableOverlay { onNavigateToLibrary() }
-                                        .padding(vertical = 8.dp, horizontal = 16.dp),
+                                        .padding(vertical = 8.dp, horizontal = 16.dp)
+                                        .widthIn(min = 64.dp),
                                 )
                             }
                         }
@@ -199,7 +202,7 @@ private fun HomeBottomBar(
             onDismissRequest = { isPopupOpen.value = false },
             properties = PopupProperties()
         ) {
-            SettingsPopup(
+            HomeSettingsPopup(
                 modifier = Modifier.padding(16.dp),
                 onOpenSettingsScreen = onNavigateToSettings,
             )

@@ -47,7 +47,6 @@ import androidx.core.graphics.red
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BookCover
 import com.andb.apps.biblio.data.BookProgress
-import com.andb.apps.biblio.data.averageLuminosity
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.rotateWithBounds
 import com.andb.apps.biblio.ui.home.BookItem
@@ -95,7 +94,7 @@ fun LibrarySpine(
     modifier: Modifier = Modifier,
 ) {
     val isImageDark = remember(book.cover) {
-        book.cover is BookCover.Available && book.cover.image.averageLuminosity() < 0.5
+        book.cover is BookCover.Available && book.cover.isDark
     }
     Box(
         modifier = modifier
@@ -166,13 +165,13 @@ fun LibrarySpine(
                         modifier = Modifier
                             .background(
                                 color = when(isImageDark) {
-                                    true -> BiblioTheme.colors.onPrimarySecondary
+                                    true -> BiblioTheme.colors.onPrimary
                                     false -> BiblioTheme.colors.onBackgroundSecondary
                                 },
                                 shape = RoundedCornerShape(topEnd = 4.dp)
                             )
                             .fillMaxWidth(book.progress.percent.toFloat().coerceAtLeast(0.01f))
-                            .height(4.dp),
+                            .height(6.dp),
                     )
                 }
             }

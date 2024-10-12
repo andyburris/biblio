@@ -29,10 +29,15 @@ class CoverStorage(
         val file = File(coverDir, fileName(bookId))
         val blurredFile = File(coverDir, blurredFileName(bookId))
         return when {
-            file.exists() && blurredFile.exists() -> BookCover.Available(
-                image = BitmapFactory.decodeFile(file.absolutePath),
-                blurredSpine = BitmapFactory.decodeFile(blurredFile.absolutePath),
-            )
+            file.exists() && blurredFile.exists() -> {
+                val cover = BitmapFactory.decodeFile(file.absolutePath)
+                val blurred = BitmapFactory.decodeFile(blurredFile.absolutePath)
+                BookCover.Available(
+                    image = cover,
+                    blurredSpine = blurred,
+                    isDark = blurred.averageLuminosity() < 0.5
+                )
+            }
             else -> BookCover.Unavailable
         }
     }
@@ -90,9 +95,15 @@ fun Bitmap.blur(context: Context, radius: Float = 25f): Bitmap {
     return outBitmap
 }
 
-fun Bitmap.averageLuminosity(): Double {
-    val scaled = Bitmap.createScaledBitmap(this, 1, 1, true)
-    val pixel = scaled.getPixel(0, 0)
-    val luminosity = pixel.red * 0.299 + pixel.green * 0.587 + pixel.blue * 0.114
+private fun Bitmap.averageLuminosity(): Double {
+    val smallerWidth = 3
+    val aspectRatio = this.width / this.height.toDouble()
+    val smallerHeight = (smallerWidth / aspectRatio).toInt()
+    val scaled = Bitmap.createScaledBitmap(this, smallerWidth, smallerHeight, true)
+    val array = IntArray(smallerWidth * smallerHeight)
+    scaled.getPixels(array, 0, smallerWidth, 0, 0, smallerWidth, smallerHeight)
+    val luminosity = array
+        .map { it.red * 0.299 + it.green * 0.587 + it.blue * 0.114 }
+        .average()
     return luminosity / 255
 }
