@@ -2,12 +2,10 @@ package com.andb.apps.biblio.ui.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,29 +13,28 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Caretright
+import com.andb.apps.biblio.LibraryView
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
+import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
 import com.andb.apps.biblio.ui.common.BiblioButton
-import com.andb.apps.biblio.ui.common.BiblioPager
-import com.andb.apps.biblio.ui.common.BiblioPagerItem
-import com.andb.apps.biblio.ui.common.BiblioPagerWidth
 import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
+import com.andb.apps.biblio.ui.common.pager.BiblioPager
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 enum class LibraryShelf(val title: String) {
@@ -54,59 +51,14 @@ fun LibraryPage(
     onOpenShelf: (LibraryShelf) -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
-    BiblioScaffold(
-        modifier = modifier,
-        bottomBar = {
-            BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack)
-        }
-    ) {
-        TempLibraryGrid(
-            booksState = booksState,
-            onOpenBook = onOpenBook,
-            onOpenShelf = onOpenShelf,
+    when(LocalSettings.current.settings.library.view) {
+        LibraryView.LIBRARY_VIEW_GRID -> BiblioScaffold(
+            modifier = modifier,
+            bottomBar = { BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack) },
+            content = { TempLibraryGrid(booksState, onOpenBook = onOpenBook, onOpenShelf = onOpenShelf) }
         )
+        LibraryView.LIBRARY_VIEW_SHELVES, LibraryView.UNRECOGNIZED, null -> {}
     }
-//            val headers = listOf(
-//                BiblioPagerItem(BiblioPagerWidth.Fill) {
-//                    LibrarySectionHeader(
-//                        "Currently Reading",
-//                        booksState.currentlyReading,
-//                        onExpandSection = { onOpenShelf("currentlyReading") },
-//                    )
-//                },
-//                BiblioPagerItem(BiblioPagerWidth.Fill) {
-//                    LibrarySectionHeader(
-//                        "Up Next",
-//                        booksState.unread,
-//                        onExpandSection = { onOpenShelf("unread") },
-//                    )
-//                },
-//                BiblioPagerItem(BiblioPagerWidth.Fill) {
-//                    LibrarySectionHeader(
-//                        "Already Read & Backburner",
-//                        booksState.doneOrBackburner,
-//                        onExpandSection = { onOpenShelf("doneOrBackburner") },
-//                    )
-//                },
-//            )
-//            val items =
-//                headers.slice(0..0) +
-//                booksState.currentlyReading.map { BiblioPagerItem(BiblioPagerWidth.Fixed()) { LibrarySpine(it) } } +
-//                headers.slice(1..1) +
-//                booksState.unread.map { BiblioPagerItem(BiblioPagerWidth.Fill) { LibrarySpine(it) } } +
-//
-//            BiblioPager(
-//                items,
-//                modifier = modifier,
-//                bottomBar = { pagerState ->
-//                    BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack)
-//                }
-//            ) {
-//                TempLibraryGrid(
-//                    booksState = booksState,
-//                    onOpenBook = onOpenBook,
-//                )
-//            }
 }
 
 @Composable

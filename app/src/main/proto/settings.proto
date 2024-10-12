@@ -24,7 +24,7 @@ message HomeSettings {
 }
 
 enum LibraryView {
-    LIBRARY_VIEW_LIST = 0;
+    LIBRARY_VIEW_SHELVES = 0;
     LIBRARY_VIEW_GRID = 1;
 }
 message LibrarySettings {

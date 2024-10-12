@@ -16,11 +16,11 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
-import com.andb.apps.biblio.ui.common.BiblioPageSwitcher
-import com.andb.apps.biblio.ui.common.BiblioPager
-import com.andb.apps.biblio.ui.common.BiblioPagerItem
-import com.andb.apps.biblio.ui.common.BiblioPagerState
-import com.andb.apps.biblio.ui.common.BiblioPagerWidth
+import com.andb.apps.biblio.ui.common.pager.BiblioPageSwitcher
+import com.andb.apps.biblio.ui.common.pager.BiblioPager
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerState
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.home.DefaultPageLength
@@ -34,7 +34,7 @@ fun ShelfPage(
     onNavigateBack: () -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
-    val items = (books).map { book ->
+    val items = books.map { book ->
         BiblioPagerItem(
             width = BiblioPagerWidth.Fixed(((0.15.dp) * (book.length ?: DefaultPageLength)).coerceAtLeast(24.dp) + 4.dp),
             content = {
@@ -52,7 +52,7 @@ fun ShelfPage(
         items = items,
         minRowHeight = 160.dp,
         modifier = modifier,
-        header = { ShelfHeader(title = shelf.title, pagerState = it); 50.dp },
+        header = { ShelfHeader(title = shelf.title, pagerState = it) },
         bottomBar = {
             BiblioBottomBar(
                 pageTitle = "Library",

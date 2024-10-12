@@ -1,40 +1,28 @@
-package com.andb.apps.biblio.ui.home
+package com.andb.apps.biblio.ui.settings
 
 import android.content.Intent
-import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Arrowright
-import com.adamglin.phosphoricons.regular.Batteryfull
 import com.adamglin.phosphoricons.regular.Bookopentext
-import com.adamglin.phosphoricons.regular.Caretright
 import com.adamglin.phosphoricons.regular.Gauge
 import com.adamglin.phosphoricons.regular.Lightning
 import com.adamglin.phosphoricons.regular.Moon
@@ -48,14 +36,18 @@ import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
+import com.andb.apps.biblio.ui.home.WifiState
+import com.andb.apps.biblio.ui.home.currentBatteryAsState
+import com.andb.apps.biblio.ui.home.toIcon
+import com.andb.apps.biblio.ui.home.toPercentString
+import com.andb.apps.biblio.ui.home.wifiSignalAsState
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingsPopup(
     modifier: Modifier = Modifier,
-    onOpenTestScreen: () -> Unit,
+    onOpenSettingsScreen: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -83,7 +75,7 @@ fun SettingsPopup(
                 },
             )
         }
-        item { SettingsItem(
+        item { SettingsPopupItem(
             title = "Battery",
             icon = batteryState.value.toIcon(),
             isActivated = false,
@@ -93,7 +85,7 @@ fun SettingsPopup(
             onMore = { context.startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)); },
         ) }
 
-        item { SettingsItem(
+        item { SettingsPopupItem(
             title = "Wi-Fi",
             icon = wifiState.value.toIcon(),
             isActivated = wifiState.value is WifiState.Connected,
@@ -147,10 +139,10 @@ fun SettingsPopup(
         ) {
             SettingsPopupHeader(
                 title = "Biblio Settings • Home",
-                onMore = { onOpenTestScreen()},
+                onMore = { onOpenSettingsScreen()},
             )
         }
-        item { SettingsItem(
+        item { SettingsPopupItem(
             title = "Pinned Apps",
             icon = PhosphorIcons.Regular.Pushpin,
             isActivated = null,
@@ -160,24 +152,9 @@ fun SettingsPopup(
             },
             onMore = {},
         ) }
-        item { SettingsItem(
-            title = "Exact Numbers",
-            icon = PhosphorIcons.Regular.Percent,
-            isActivated = settings.settings.common.showNumbers,
-            state = when(settings.settings.common.showNumbers) {
-                true -> "On"
-                false -> "Off"
-            },
-            onToggle = {
-                coroutineScope.launch {
-                    settings.updateSettings { currentSettings ->
-                        currentSettings.toBuilder()
-                            .setCommon(currentSettings.common.toBuilder()
-                                .setShowNumbers(!currentSettings.common.showNumbers))
-                            .build()
-                    }
-                }
-            },
+        item { SettingsPopupItem(
+            settingState = settings.common.showNumbers,
+            onToggle = { it.update(!it.value) },
         ) }
     }
 }
@@ -204,109 +181,6 @@ private fun SettingsPopupHeader(
             onClick = onMore,
             rightIcon = PhosphorIcons.Regular.Arrowright,
             text = "More",
-        )
-    }
-}
-
-@Composable
-private fun SettingsItem(
-    title: String,
-    icon: ImageVector,
-    isActivated: Boolean?,
-    state: String,
-    modifier: Modifier = Modifier,
-    onMore: (() -> Unit)? = null,
-    onToggle: (() -> Unit)? = onMore,
-) {
-    Row(
-        modifier = modifier
-            .border(BiblioTheme.colors.divider, bottom = 1.dp, end = 1.dp)
-            .clickable(onClick = onToggle ?: onMore ?: {})
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = BiblioTheme.colors.onBackgroundSecondary,
-            modifier = Modifier
-                .then(when(isActivated) {
-                    true -> Modifier.background(BiblioTheme.colors.surface, shape = CircleShape)
-                    false -> Modifier.border(1.dp, color = BiblioTheme.colors.divider, shape = CircleShape)
-                    null -> Modifier
-                })
-                .padding(6.dp)
-                .size(20.dp)
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-        ) {
-            ExactText(
-                text = title,
-                maxLines = 1,
-            )
-            ExactText(
-                text = state,
-                color = BiblioTheme.colors.onBackgroundSecondary,
-                maxLines = 1,
-            )
-        }
-        if(onMore != null) {
-            BiblioButton(
-                icon = PhosphorIcons.Regular.Caretright,
-                onClick = onMore,
-            )
-        }
-    }
-}
-
-private data class SettingsSegment(
-    val key: String,
-    val title: String,
-    val icon: ImageVector,
-)
-@Composable
-private fun SettingsSegmentItem(
-    title: String,
-    segments: List<SettingsSegment>,
-    selectedSegmentKey: String,
-    modifier: Modifier = Modifier,
-    onSelect: (SettingsSegment) -> Unit,
-    onMore: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .border(BiblioTheme.colors.divider, bottom = 1.dp),
-    ) {
-        segments.forEach { segment ->
-            val isSelected = segment.key == selectedSegmentKey
-            Row(
-                modifier = Modifier
-                    .border(BiblioTheme.colors.divider, end = 1.dp)
-                    .clickable(onClick = { onSelect(segment) })
-                    .background(if (isSelected) BiblioTheme.colors.surface else Color.Transparent)
-                    .height(48.dp)
-                    .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = segment.icon,
-                    contentDescription = null,
-                    tint = when(isSelected) {
-                        true -> BiblioTheme.colors.onBackground
-                        false -> BiblioTheme.colors.onBackgroundSecondary
-                    },
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-        BiblioButton(
-            onClick = onMore,
-            icon = PhosphorIcons.Regular.Caretright,
-            modifier = Modifier,
         )
     }
 }

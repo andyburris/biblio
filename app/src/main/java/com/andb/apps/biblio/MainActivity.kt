@@ -37,6 +37,7 @@ import com.andb.apps.biblio.ui.home.rememberStoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryPage
 import com.andb.apps.biblio.ui.library.LibraryShelf
 import com.andb.apps.biblio.ui.library.ShelfPage
+import com.andb.apps.biblio.ui.settings.SettingsPage
 import com.andb.apps.biblio.ui.test.TestPage
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
@@ -81,7 +82,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(innerPadding),
                                     onNavigateToApps = { navController.navigate("apps") },
                                     onNavigateToLibrary = { navController.navigate("library") },
-                                    onNavigateToTest = { navController.navigate("test") },
+                                    onNavigateToSettings = { navController.navigate("settings") },
                                     onRequestStoragePermission = { storagePermissionState.launchPermissionRequest() },
                                     onOpenBook = { bookRepository.openBook(it) },
                                 )
@@ -136,6 +137,18 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 else -> navController.popBackStack()
+                            }
+                        }
+                        composable("settings") {
+                            Scaffold(
+                                Modifier.fillMaxSize(),
+                                containerColor = BiblioTheme.colors.background,
+                            ) { innerPadding ->
+                                SettingsPage(
+                                    modifier = Modifier.padding(innerPadding),
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onOpenTestScreen = { navController.navigate("test") },
+                                )
                             }
                         }
                         composable("test") {

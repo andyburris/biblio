@@ -156,7 +156,6 @@ fun LibrarySpine(
                     .padding(8.dp)
                     .weight(1f)
                     .rotateWithBounds(90f),
-                lineHeight = 18.sp,
                 overflow = TextOverflow.Ellipsis,
             )
             if (book.progress is BookProgress.Progress) {

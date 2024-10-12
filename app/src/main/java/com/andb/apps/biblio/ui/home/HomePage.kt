@@ -1,6 +1,5 @@
 package com.andb.apps.biblio.ui.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -21,21 +20,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.Batterycharging
-import com.adamglin.phosphoricons.regular.Batteryempty
-import com.adamglin.phosphoricons.regular.Batteryfull
-import com.adamglin.phosphoricons.regular.Batteryhigh
-import com.adamglin.phosphoricons.regular.Batterylow
-import com.adamglin.phosphoricons.regular.Batterymedium
 import com.adamglin.phosphoricons.regular.Books
 import com.adamglin.phosphoricons.regular.Slidershorizontal
 import com.adamglin.phosphoricons.regular.Squaresfour
-import com.adamglin.phosphoricons.regular.Wifihigh
-import com.adamglin.phosphoricons.regular.Wifilow
-import com.adamglin.phosphoricons.regular.Wifimedium
-import com.adamglin.phosphoricons.regular.Wifinone
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.ui.common.BiblioButton
@@ -43,6 +33,7 @@ import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.clickableOverlay
+import com.andb.apps.biblio.ui.settings.SettingsPopup
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 import java.text.SimpleDateFormat
 
@@ -52,13 +43,13 @@ fun HomePage(
     modifier: Modifier = Modifier,
     onNavigateToApps: () -> Unit,
     onNavigateToLibrary: () -> Unit,
-    onNavigateToTest: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onRequestStoragePermission: () -> Unit,
     onOpenBook: (Book) -> Unit,
 ) {
     BiblioScaffold(
         modifier = modifier,
-        bottomBar = { HomeBottomBar(onNavigateToApps = onNavigateToApps, onNavigateToTest = onNavigateToTest) },
+        bottomBar = { HomeBottomBar(onNavigateToApps = onNavigateToApps, onNavigateToSettings = onNavigateToSettings) },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -147,7 +138,7 @@ fun HomePage(
 private fun HomeBottomBar(
     modifier: Modifier = Modifier,
     onNavigateToApps: () -> Unit,
-    onNavigateToTest: () -> Unit,
+    onNavigateToSettings: () -> Unit,
 ) {
     val isPopupOpen = remember { mutableStateOf(false) }
 
@@ -206,10 +197,11 @@ private fun HomeBottomBar(
             alignment = Alignment.BottomCenter,
             offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
             onDismissRequest = { isPopupOpen.value = false },
+            properties = PopupProperties()
         ) {
             SettingsPopup(
                 modifier = Modifier.padding(16.dp),
-                onOpenTestScreen = onNavigateToTest,
+                onOpenSettingsScreen = onNavigateToSettings,
             )
         }
     }
