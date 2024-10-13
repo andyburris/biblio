@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import com.andb.apps.biblio.BuildConfig
 import com.andb.apps.biblio.LibraryView
 import com.andb.apps.biblio.SyncApp
 import com.andb.apps.biblio.data.LocalSettings
+import com.andb.apps.biblio.data.LocalSyncServer
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.BiblioScaffold
@@ -96,7 +98,10 @@ fun SettingsPage(
                             InstructionItem(1, "Go to “Options”", Modifier.padding(end = 16.dp))
                             InstructionItem(2, "Turn on “Sync via WebDav”", Modifier.padding(end = 16.dp))
                             InstructionItem(3, "In WebDAV sync options, set the URL to:", Modifier.padding(end = 16.dp), widget = {
-                                ExactText("http://127.0.0.1:8080/", color = BiblioTheme.colors.onBackgroundSecondary)
+                                ExactText(
+                                    LocalSyncServer.current.urlFlow.collectAsState().value,
+                                    color = BiblioTheme.colors.onBackgroundSecondary
+                                )
                             })
                             InstructionItem(4, "Set the username to:", Modifier.padding(end = 16.dp), widget = {
                                 ExactText("biblio", color = BiblioTheme.colors.onBackgroundSecondary)

@@ -1,5 +1,6 @@
 package com.andb.apps.biblio
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowInsets
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -25,6 +27,7 @@ import androidx.navigation.navArgument
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.data.LocalSettings
+import com.andb.apps.biblio.data.LocalSyncServer
 import com.andb.apps.biblio.data.SettingsState
 import com.andb.apps.biblio.data.SyncServer
 import com.andb.apps.biblio.data.booksAsState
@@ -47,7 +50,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        server = SyncServer(getExternalFilesDir(null)!!)
+        server = SyncServer(
+            getExternalFilesDir(null)!!,
+//            "172.25.240.1"
+//            "localhost",
+//            port = 8081,
+        )
         server.start()
 
         enableEdgeToEdge()
@@ -59,12 +67,10 @@ class MainActivity : ComponentActivity() {
             val settings = context.settingsDataStore.rememberSettingsState()
             val bookRepository = remember { BookRepository(context, coroutineScope, server) }
 
-
-
             val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
 
-            CompositionLocalProvider(LocalSettings provides settings) {
+            CompositionLocalProvider(LocalSettings provides settings, LocalSyncServer provides server) {
                 BiblioTheme {
                     NavHost(
                         navController = navController,
@@ -96,7 +102,7 @@ class MainActivity : ComponentActivity() {
                                 AppsPage(
                                     appsState = appsState.value,
                                     modifier = Modifier.padding(innerPadding),
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.safePopBackStack() },
                                 )
                             }
                         }
@@ -109,13 +115,13 @@ class MainActivity : ComponentActivity() {
                                     LibraryPage(
                                         booksState = books,
                                         modifier = Modifier.padding(innerPadding),
-                                        onNavigateBack = { navController.popBackStack() },
+                                        onNavigateBack = { navController.safePopBackStack() },
                                         onOpenShelf = { navController.navigate("shelf/${it.name}") },
                                         onOpenBook = { bookRepository.openBook(it) },
                                         onOpenSettings = { navController.navigate("settings") },
                                     )
                                 }
-                                else -> navController.popBackStack()
+                                else -> navController.safePopBackStack()
                             }
                         }
                         composable("shelf/{shelf}") { backStackEntry ->
@@ -133,7 +139,7 @@ class MainActivity : ComponentActivity() {
                                             LibraryShelf.UpNext -> books.unread
                                         },
                                         modifier = Modifier.padding(innerPadding),
-                                        onNavigateBack = { navController.popBackStack() },
+                                        onNavigateBack = { navController.safePopBackStack() },
                                         onOpenBook = { bookRepository.openBook(it) },
                                     )
                                 }
@@ -147,7 +153,7 @@ class MainActivity : ComponentActivity() {
                             ) { innerPadding ->
                                 SettingsPage(
                                     modifier = Modifier.padding(innerPadding),
-                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateBack = { navController.safePopBackStack() },
                                     onOpenTestScreen = { navController.navigate("test") },
                                 )
                             }
@@ -159,7 +165,7 @@ class MainActivity : ComponentActivity() {
                             ) { innerPadding ->
                                 TestPage(
                                     modifier = Modifier.padding(innerPadding),
-                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateBack = { navController.safePopBackStack() },
                                 )
                             }
                         }
@@ -183,4 +189,10 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         server.stop()
     }
+}
+
+@SuppressLint("RestrictedApi")
+private fun NavController.safePopBackStack() {
+    if (this.currentBackStack.value.size > 2)
+        this.popBackStack()
 }

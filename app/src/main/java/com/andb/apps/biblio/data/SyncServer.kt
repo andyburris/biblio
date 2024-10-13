@@ -1,5 +1,6 @@
 package com.andb.apps.biblio.data
 
+import androidx.compose.runtime.compositionLocalOf
 import com.andb.apps.biblio.SavedBook
 import com.andb.apps.biblio.SyncApp
 import kotlinx.coroutines.flow.Flow
@@ -21,12 +22,21 @@ import java.io.IOException
 import kotlin.io.path.Path
 import kotlin.io.path.createParentDirectories
 
+val LocalSyncServer = compositionLocalOf { SyncServer(File(""), port = 1) }
+
 class SyncServer(
     private val directory: File,
+    hostname: String = "127.0.0.1",
     port: Int = 8080,
-) : NanoHTTPD("127.0.0.1", port) {
+) : NanoHTTPD(hostname, port) {
     private val mutableFileFlow = MutableStateFlow((directory to false))
+    val urlFlow = MutableStateFlow("http://$hostname:$listeningPort/")
     val fileFlow: StateFlow<Pair<File, Boolean>> = mutableFileFlow
+
+    override fun start() {
+        super.start()
+        urlFlow.value = "http://$hostname:$listeningPort/"
+    }
 
     override fun serve(session: IHTTPSession): Response {
         println("Request: ${session.method} ${session.uri}")

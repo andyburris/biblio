@@ -14,6 +14,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
@@ -27,8 +28,8 @@ import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.home.DefaultPageLength
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
-fun Book.spineWidthDp(): Dp {
-    return ((0.15.dp) * (length ?: DefaultPageLength)).coerceAtLeast(24.dp) + 4.dp
+fun Book.spineWidthDp(multiplier: Double = 1.0): Dp {
+    return (((0.1 * multiplier).dp) * (length ?: DefaultPageLength)).coerceIn(24.dp..128.dp) + 4.dp
 }
 
 @Composable
@@ -41,7 +42,7 @@ fun ShelfPage(
 ) {
     val items = books.map { book ->
         BiblioPagerItem(
-            width = BiblioPagerWidth.Fixed(book.spineWidthDp()),
+            width = BiblioPagerWidth.Fixed(book.spineWidthDp(0.8)),
             content = {
                 LibrarySpine(
                     book = book,

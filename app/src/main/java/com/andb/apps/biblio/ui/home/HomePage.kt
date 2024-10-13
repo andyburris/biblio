@@ -89,11 +89,12 @@ fun HomePage(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            val book = booksState.currentlyReading.firstOrNull() ?: booksState.unread.first()
                             BookItem(
-                                publication = booksState.currentlyReading.firstOrNull() ?: booksState.unread.first(),
+                                publication = book,
                                 size = BookItemSize.Large,
                                 modifier = Modifier
-                                    .clickableOverlay { onOpenBook(booksState.currentlyReading.first()) }
+                                    .clickableOverlay { onOpenBook(book) }
                                     .padding(16.dp),
                             )
                         }

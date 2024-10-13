@@ -31,6 +31,7 @@ import org.readium.r2.shared.publication.Contributor
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.epub.pageList
 import org.readium.r2.shared.publication.services.cover
+import org.readium.r2.shared.publication.services.locateProgression
 import org.readium.r2.shared.util.getOrElse
 import java.io.File
 import java.time.LocalDateTime
@@ -80,7 +81,7 @@ class BookRepository(
         return flow
     }
 
-    private fun getPublicationsFromStorage(): List<File> {
+    private fun getFilesFromStorage(): List<File> {
         val root = File(ROOT_DIR)
         val (files, duration) = measureTimedValue {
             root.walk()
@@ -98,7 +99,7 @@ class BookRepository(
     }
 
     suspend fun refreshPublicationsFromStorage(existingBooks: List<Book>) {
-        val files = getPublicationsFromStorage()
+        val files = getFilesFromStorage()
 
         val existingPaths = existingBooks.flatMap { it.filePaths }
         val updatedPaths = files.map { it.path }
@@ -146,7 +147,7 @@ class BookRepository(
                 title = pub.metadata.title,
                 authors = pub.metadata.authors.distinctBy { it.identifier ?: it.name },
                 progress = BookProgress.Basic(addedAt = LocalDateTime.now(), timesOpened = 0L),
-                length = (pub.metadata.numberOfPages ?: if(pub.pageList.size > 5) pub.pageList.size else 300).toLong(),
+                length = (pub.metadata.numberOfPages ?: pub.locateProgression(1.0)?.locations?.position)?.toLong(),
                 filePaths = files.map{ it.path },
             )
         }
@@ -233,6 +234,7 @@ fun BookRepository.booksAsState(
                 when (val existingBooks = allBooks.value) {
                     is BooksState.Loaded -> {
                         refreshPublicationsFromStorage(existingBooks.allBooks)
+                        isFirstLoad.value = false
                         delay(10000)
                     }
                     else -> {
