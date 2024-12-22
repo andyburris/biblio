@@ -16,6 +16,7 @@ import com.andb.apps.biblio.BuildConfig
 import com.andb.apps.biblio.SavedBook
 import com.andb.apps.biblio.ui.home.ReadiumUtils
 import com.andb.apps.biblio.ui.home.StoragePermissionState
+import com.andb.apps.biblio.ui.library.LibraryShelf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -23,13 +24,10 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.withContext
 import org.readium.r2.shared.publication.Contributor
 import org.readium.r2.shared.publication.Publication
-import org.readium.r2.shared.publication.epub.pageList
 import org.readium.r2.shared.publication.services.cover
 import org.readium.r2.shared.publication.services.locateProgression
 import org.readium.r2.shared.util.getOrElse
@@ -196,6 +194,21 @@ class BookRepository(
             System.err.println("No readers found")
         }
     }
+
+    fun moveBooks(books: List<Book>, shelf: LibraryShelf) {
+        database.savedBookQueries.transaction {
+            books.forEach { book ->
+                when(shelf) {
+                    LibraryShelf.CurrentlyReading -> database.savedBookQueries
+                        .updateProgress(book.progress.toCurrentlyReading(), book.id)
+                    LibraryShelf.UpNext -> database.savedBookQueries
+                        .updateProgress(book.progress.toUpNext(), book.id)
+                    LibraryShelf.DoneOrBackburner -> database.savedBookQueries
+                        .updateProgress(book.progress.toAlreadyRead(), book.id)
+                }
+            }
+        }
+    }
 }
 
 sealed class BooksState {
@@ -268,22 +281,22 @@ private fun List<Book>.categorize(): BooksState.Loaded {
                 is BookProgress.Progress -> {
                     val progress = book.progress.percent
                     when {
-                        progress in 0.0..0.95 && book.progress.lastOpened?.isAfter(LocalDateTime.now().minus(backburnerTime.toJavaDuration())) ?: false ->
-                            Triple((currentlyReading + book), unread, doneOrBackburner)
-                        progress == 0.0 || book.progress.lastOpened == null ->
+                        progress >= AlreadyReadProgress || beforeBackburnerTime || book.progress.markedDone ->
+                            Triple(currentlyReading, unread, (doneOrBackburner + book))
+                        progress == 0.0 || book.progress.lastOpened == null || book.progress.timesOpened == 0L  ->
                             Triple(currentlyReading, (unread + book), doneOrBackburner)
                         else ->
-                            Triple(currentlyReading, unread, (doneOrBackburner + book))
+                            Triple((currentlyReading + book), unread, doneOrBackburner)
                     }
                 }
                 is BookProgress.Basic -> {
                     when {
-                        book.progress.lastOpened?.isAfter(LocalDateTime.now().minus(backburnerTime.toJavaDuration())) ?: false ->
-                            Triple((currentlyReading + book), unread, doneOrBackburner)
-                        book.progress.lastOpened == null ->
+                        beforeBackburnerTime || book.progress.markedDone ->
+                            Triple(currentlyReading, unread, (doneOrBackburner + book))
+                        book.progress.lastOpened == null || book.progress.timesOpened == 0L  ->
                             Triple(currentlyReading, (unread + book), doneOrBackburner)
                         else ->
-                            Triple(currentlyReading, unread, (doneOrBackburner + book))
+                            Triple((currentlyReading + book), unread, doneOrBackburner)
                     }
                 }
             }

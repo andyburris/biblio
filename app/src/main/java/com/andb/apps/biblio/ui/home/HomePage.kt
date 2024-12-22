@@ -1,6 +1,7 @@
 package com.andb.apps.biblio.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -30,12 +30,12 @@ import com.adamglin.phosphoricons.regular.Slidershorizontal
 import com.adamglin.phosphoricons.regular.Squaresfour
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BooksState
+import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.BiblioButton
 import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.clickableOverlay
-import com.andb.apps.biblio.ui.settings.SettingsPopup
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 import java.text.SimpleDateFormat
 
@@ -110,24 +110,38 @@ fun HomePage(
                                 val numBooks = (this@BoxWithConstraints.maxWidth / 128.dp).toInt()
                                 val slate = booksState.currentlyReading + booksState.unread //TODO: always show one next up?
                                 slate.drop(1).take(numBooks).forEach {
+                                    Box(
+                                        Modifier
+                                            .clickableOverlay { onOpenBook(it) }
+                                            .weight(1f)
+                                            .padding(vertical = 8.dp),
+                                    ) {
+                                        BookItem(
+                                            publication = it,
+                                            size = BookItemSize.Medium,
+                                            modifier = Modifier.align(Alignment.Center),
+                                        )
+                                    }
+                                }
+                                Box(
+                                    Modifier
+                                        .clickableOverlay { onNavigateToLibrary() }
+                                        .weight(1f)
+                                        .padding(vertical = 8.dp),
+                                ) {
                                     BookItem(
-                                        publication = it,
+                                        title = "Library",
+                                        icon = PhosphorIcons.Regular.Books,
+                                        badge = when(LocalSettings.current.common.showNumbers.value) {
+                                            true -> "+${booksState.allBooks.size - numBooks - 1}"
+                                            false -> null
+                                        },
                                         size = BookItemSize.Medium,
                                         modifier = Modifier
-                                            .clickableOverlay { onOpenBook(it) }
-                                            .padding(vertical = 8.dp, horizontal = 16.dp),
+                                            .align(Alignment.Center)
+                                            .widthIn(min = 64.dp),
                                     )
                                 }
-                                BookItem(
-                                    title = "Library",
-                                    icon = PhosphorIcons.Regular.Books,
-//                                    badge = "+${publications.books.size - numBooks - 1}",
-                                    size = BookItemSize.Medium,
-                                    modifier = Modifier
-                                        .clickableOverlay { onNavigateToLibrary() }
-                                        .padding(vertical = 8.dp, horizontal = 16.dp)
-                                        .widthIn(min = 64.dp),
-                                )
                             }
                         }
                     }

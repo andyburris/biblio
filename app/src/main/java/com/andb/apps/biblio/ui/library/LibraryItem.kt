@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Check
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BookCover
 import com.andb.apps.biblio.data.BookProgress
@@ -75,6 +80,7 @@ fun LibraryItem(
 fun LibrarySpine(
     book: Book,
     modifier: Modifier = Modifier,
+    isSelected: Boolean = false,
 ) {
     val isImageDark = remember(book.cover) {
         book.cover is BookCover.Available && book.cover.isDark
@@ -94,7 +100,7 @@ fun LibrarySpine(
                     .drawWithContent {
                         drawContent()
                         drawRect(
-                            color = when(isImageDark) {
+                            color = when (isImageDark) {
                                 true -> Color.Black.copy(alpha = 0.5f)
                                 false -> Color.White.copy(alpha = 0.5f)
                             },
@@ -142,6 +148,19 @@ fun LibrarySpine(
                     .rotateWithBounds(90f),
                 overflow = TextOverflow.Ellipsis,
             )
+            if (isSelected) {
+                Icon(
+                    imageVector = PhosphorIcons.Regular.Check,
+                    contentDescription = "Selected",
+                    tint = when (isImageDark) {
+                        true -> BiblioTheme.colors.onPrimary
+                        false -> BiblioTheme.colors.onBackground
+                    },
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .size(16.dp),
+                )
+            }
             if (book.progress is BookProgress.Progress) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -149,13 +168,17 @@ fun LibrarySpine(
                     Box(
                         modifier = Modifier
                             .background(
-                                color = when(isImageDark) {
+                                color = when (isImageDark) {
                                     true -> BiblioTheme.colors.onPrimary
                                     false -> BiblioTheme.colors.onBackgroundSecondary
                                 },
                                 shape = RoundedCornerShape(topEnd = 4.dp)
                             )
-                            .fillMaxWidth(book.progress.percent.toFloat().coerceAtLeast(0.01f))
+                            .fillMaxWidth(
+                                book.progress.percent
+                                    .toFloat()
+                                    .coerceAtLeast(0.01f)
+                            )
                             .height(6.dp),
                     )
                 }

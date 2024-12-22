@@ -14,6 +14,7 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Arrowsclockwise
 import com.adamglin.phosphoricons.regular.Books
+import com.adamglin.phosphoricons.regular.Image
 import com.adamglin.phosphoricons.regular.Percent
 import com.adamglin.phosphoricons.regular.Pushpin
 import com.adamglin.phosphoricons.regular.Squaresfour
@@ -28,9 +29,9 @@ import java.io.InputStream
 import java.io.OutputStream
 
 class ToggleableSettingState<T>(
-    name: String, value: T, onUpdate: suspend (T) -> Unit, isActivated: Boolean?, icon: ImageVector, stateDescription: String,
+    name: String, value: T, onUpdate: suspend (T) -> Unit, isActivated: Boolean?, icon: ImageVector, valueToDescription: (T) -> String,
     val onToggle: suspend ToggleableSettingState<T>.() -> Unit
-) : SettingState<T>(name, value, onUpdate, isActivated, icon, stateDescription) {
+) : SettingState<T>(name, value, onUpdate, isActivated, icon, valueToDescription) {
     fun toggle() {
         CoroutineScope(Dispatchers.IO).launch {
             onToggle()
@@ -43,8 +44,9 @@ open class SettingState<T>(
     private val onUpdate: suspend (T) -> Unit,
     val isActivated: Boolean?,
     val icon: ImageVector,
-    val stateDescription: String,
+    val valueToDescription: (T) -> String,
 ) {
+    val stateDescription get() = valueToDescription(value)
     fun update(newValue: T) {
         CoroutineScope(Dispatchers.IO).launch {
             onUpdate(newValue)
@@ -63,11 +65,12 @@ data class SettingsState(
 ) {
     data class CommonSettings(
         val showNumbers: ToggleableSettingState<Boolean>,
-        val syncState: SettingState<SyncInfo>
+        val syncState: SettingState<SyncInfo>,
+        val eInkColors: ToggleableSettingState<Boolean>,
     )
     val common = CommonSettings(
         showNumbers = ToggleableSettingState(
-            name = "Show Numbers",
+            name = "Show Exact Numbers",
             value = settings.common.showNumbers,
             onUpdate = {
                 onUpdateSettings { currentSettings ->
@@ -76,7 +79,7 @@ data class SettingsState(
             },
             isActivated = settings.common.showNumbers,
             icon = PhosphorIcons.Regular.Percent,
-            stateDescription = if(settings.common.showNumbers) "On" else "Off",
+            valueToDescription = { if(it) "On" else "Off" },
             onToggle = { update(!value) }
         ),
         syncState = SettingState(
@@ -94,10 +97,24 @@ data class SettingsState(
             },
             isActivated = settings.common.syncApp != SyncApp.SYNC_APP_NONE,
             icon = PhosphorIcons.Regular.Arrowsclockwise,
-            stateDescription = when(settings.common.syncApp) {
+            valueToDescription = { when(it.app) {
                 SyncApp.SYNC_APP_MOON_READER -> "Moon Reader"
+                SyncApp.SYNC_APP_KOREADER -> "KOReader"
                 else -> "None"
-            }
+            } }
+        ),
+        eInkColors = ToggleableSettingState(
+            name = "E-Ink Colors",
+            value = settings.common.einkColors,
+            onUpdate = {
+                onUpdateSettings { currentSettings ->
+                    currentSettings.toBuilder().setCommon(currentSettings.common.toBuilder().setEinkColors(it)).build()
+                }
+            },
+            isActivated = settings.common.einkColors,
+            icon = PhosphorIcons.Regular.Image,
+            valueToDescription = { if(it) "On" else "Off" },
+            onToggle = { update(!value) }
         )
     )
 
@@ -118,11 +135,11 @@ data class SettingsState(
                 LibraryView.LIBRARY_VIEW_GRID -> PhosphorIcons.Regular.Squaresfour
                 else -> PhosphorIcons.Regular.Books
             },
-            stateDescription = when(settings.library.view) {
+            valueToDescription = { when(it) {
                 LibraryView.LIBRARY_VIEW_GRID -> "Grid"
                 LibraryView.LIBRARY_VIEW_SHELVES -> "Shelves"
                 else -> "Unrecognized"
-            },
+            } },
             onToggle = { update(when(value) {
                 LibraryView.LIBRARY_VIEW_GRID -> LibraryView.LIBRARY_VIEW_SHELVES
                 else -> LibraryView.LIBRARY_VIEW_GRID
@@ -147,7 +164,9 @@ data class SettingsState(
             },
             isActivated = settings.home.pinnedAppsList.isNotEmpty(),
             icon = PhosphorIcons.Regular.Pushpin,
-            stateDescription = if(settings.home.pinnedAppsList.isEmpty()) "None" else settings.home.pinnedAppsList.joinToString { it }
+            valueToDescription = { list ->
+                if(list.isEmpty()) "None" else list.joinToString { it }
+            }
         )
     )
 }

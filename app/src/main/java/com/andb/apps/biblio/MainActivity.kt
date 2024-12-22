@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -23,12 +23,10 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.data.LocalSyncServer
-import com.andb.apps.biblio.data.SettingsState
 import com.andb.apps.biblio.data.SyncServer
 import com.andb.apps.biblio.data.booksAsState
 import com.andb.apps.biblio.data.rememberSettingsState
@@ -56,7 +54,6 @@ class MainActivity : ComponentActivity() {
 //            "localhost",
 //            port = 8081,
         )
-        server.start()
 
         enableEdgeToEdge()
         setContent {
@@ -66,6 +63,14 @@ class MainActivity : ComponentActivity() {
             val storagePermissionState = rememberStoragePermissionState()
             val settings = context.settingsDataStore.rememberSettingsState()
             val bookRepository = remember { BookRepository(context, coroutineScope, server) }
+
+            LaunchedEffect(settings.common.syncState) {
+                if(settings.common.syncState.isActivated == true && !server.isAlive) {
+                    server.start()
+                } else if (settings.common.syncState.isActivated != true && server.isAlive) {
+                    server.stop()
+                }
+            }
 
             val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
@@ -141,6 +146,9 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.padding(innerPadding),
                                         onNavigateBack = { navController.safePopBackStack() },
                                         onOpenBook = { bookRepository.openBook(it) },
+                                        onMoveBooks = { books, shelf ->
+                                            bookRepository.moveBooks(books, shelf)
+                                        },
                                     )
                                 }
                                 else -> navController.popBackStack()

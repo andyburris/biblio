@@ -1,20 +1,8 @@
 package com.andb.apps.biblio.ui.home
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,17 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -53,15 +34,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
-import androidx.compose.ui.unit.min
-import androidx.compose.ui.unit.toIntSize
 import com.andb.apps.biblio.data.Book
 import com.andb.apps.biblio.data.BookCover
 import com.andb.apps.biblio.data.BookProgress
 import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.ExactText
-import com.andb.apps.biblio.ui.common.border
 import com.andb.apps.biblio.ui.common.skew
 import com.andb.apps.biblio.ui.library.NO_TITLE
 import com.andb.apps.biblio.ui.theme.BiblioTheme
@@ -170,7 +147,11 @@ private fun BookItem(
                 BookItemSize.Medium -> 1 / 96.0
                 BookItemSize.Large -> 1 / 60.0
             }
-            val pageColors = (0 until (pages * pagesMultiplier).toInt().coerceAtLeast(1)).flatMap { listOf(bg, bgSecondary) }
+            val pageColors = (0 until (pages * pagesMultiplier)
+                .toInt()
+                .coerceAtLeast(1))
+                .flatMap { listOf(bg, bgSecondary) }
+                .let { listOf(bgSecondary) + it }
             val pagesGradient = Brush.verticalGradient(pageColors)
             Box(
                 Modifier.heightIn(max = spineWidth)
@@ -338,7 +319,10 @@ fun ImageCover(
     modifier: Modifier = Modifier,
 ) {
     Image(
-        bitmap = cover.image.asImageBitmap(),
+        bitmap = when {
+            cover.isDark && LocalSettings.current.common.eInkColors.value -> cover.brightenedImage.asImageBitmap()
+            else -> cover.image.asImageBitmap()
+        },
         contentDescription = "Cover of ${publication.title}",
         modifier = modifier
             .height(height)

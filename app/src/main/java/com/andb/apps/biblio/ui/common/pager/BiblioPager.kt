@@ -2,12 +2,9 @@ package com.andb.apps.biblio.ui.common.pager
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -19,10 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Placeable
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -31,7 +25,6 @@ import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Caretleft
 import com.adamglin.phosphoricons.regular.Caretright
 import com.andb.apps.biblio.ui.common.BiblioButton
-import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
@@ -93,6 +86,7 @@ fun BiblioPager(
     items: List<BiblioPagerItem>,
     minRowHeight: Dp,
     modifier: Modifier = Modifier,
+    tryToFill: Boolean = false,
     initialPageIndex: Int = 0,
     header: (@Composable (BiblioPagerState) -> Unit)? = null,
     bottomBar: (@Composable (BiblioPagerState) -> Unit)? = null,
@@ -122,7 +116,10 @@ fun BiblioPager(
                             .then(
                                 when (currentPage.fillsHeight) {
                                     true -> Modifier.weight(1f).heightIn(min = rowHeight)
-                                    false -> Modifier.height(rowHeight)
+                                    false -> when (tryToFill) {
+                                        false -> Modifier.height(rowHeight)
+                                        true -> Modifier.heightIn(min = rowHeight).weight(1f)
+                                    }
                                 }
                             )
                             .fillMaxWidth(),

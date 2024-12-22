@@ -3,6 +3,10 @@ package com.andb.apps.biblio.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
@@ -32,9 +36,11 @@ class CoverStorage(
             file.exists() && blurredFile.exists() -> {
                 val cover = BitmapFactory.decodeFile(file.absolutePath)
                 val blurred = BitmapFactory.decodeFile(blurredFile.absolutePath)
+                val brightened = cover.makeBrighter(1.5f)
                 BookCover.Available(
                     image = cover,
                     blurredSpine = blurred,
+                    brightenedImage = brightened,
                     isDark = blurred.averageLuminosity() < 0.5
                 )
             }
@@ -106,4 +112,24 @@ private fun Bitmap.averageLuminosity(): Double {
         .map { it.red * 0.299 + it.green * 0.587 + it.blue * 0.114 }
         .average()
     return luminosity / 255
+}
+
+fun Bitmap.makeBrighter(brightnessFactor: Float): Bitmap {
+    // Create a mutable copy of the original bitmap
+    val newBitmap = Bitmap.createBitmap(width, height, config)
+    val canvas = Canvas(newBitmap)
+
+    // Adjust the brightness using a ColorMatrix
+    val colorMatrix = ColorMatrix().apply {
+        setScale(brightnessFactor, brightnessFactor, brightnessFactor, 1.0f) // Scale RGB channels
+    }
+
+    val paint = Paint().apply {
+        colorFilter = ColorMatrixColorFilter(colorMatrix)
+    }
+
+    // Draw the original bitmap onto the new bitmap with the brightness filter applied
+    canvas.drawBitmap(this, 0f, 0f, paint)
+
+    return newBitmap
 }

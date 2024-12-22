@@ -238,6 +238,7 @@ fun SettingsPageItem(
                     )
                 }
             }
+            widget()
             if(onMore != null) {
                 BiblioButton(
                     icon = PhosphorIcons.Regular.Caretright,

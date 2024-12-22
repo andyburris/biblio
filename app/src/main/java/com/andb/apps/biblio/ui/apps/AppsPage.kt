@@ -32,14 +32,14 @@ import com.adamglin.phosphoricons.regular.Trash
 import com.andb.apps.biblio.data.LocalSettings
 import com.andb.apps.biblio.ui.common.BiblioBottomBar
 import com.andb.apps.biblio.ui.common.BiblioButton
-import com.andb.apps.biblio.ui.common.pager.BiblioPageSwitcher
-import com.andb.apps.biblio.ui.common.pager.BiblioPager
-import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
-import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
 import com.andb.apps.biblio.ui.common.BiblioScaffold
 import com.andb.apps.biblio.ui.common.ButtonStyle
 import com.andb.apps.biblio.ui.common.ExactText
 import com.andb.apps.biblio.ui.common.border
+import com.andb.apps.biblio.ui.common.pager.BiblioPageSwitcher
+import com.andb.apps.biblio.ui.common.pager.BiblioPager
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
+import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 
@@ -59,7 +59,7 @@ fun AppsPage(
             modifier = modifier,
             items = appsState.apps.map { app ->
                 BiblioPagerItem(
-                    width = BiblioPagerWidth.Dynamic(min = 144.dp),
+                    width = BiblioPagerWidth.Dynamic(min = 178.dp),
                     content = {
                         AppItem(
                             app = app,

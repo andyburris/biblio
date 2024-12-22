@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,13 +49,12 @@ import com.andb.apps.biblio.ui.common.pager.BiblioPager
 import com.andb.apps.biblio.ui.common.pager.BiblioPagerItem
 import com.andb.apps.biblio.ui.common.pager.BiblioPagerWidth
 import com.andb.apps.biblio.ui.common.rotateWithBounds
-import com.andb.apps.biblio.ui.settings.SettingsPopup
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
-enum class LibraryShelf(val title: String) {
-    CurrentlyReading("Currently Reading"),
-    UpNext("Up Next"),
-    DoneOrBackburner("Already Read & Backburner"),
+enum class LibraryShelf(val title: String, val shortTitle: String) {
+    CurrentlyReading("Currently Reading", "Reading"),
+    UpNext("Up Next", "Up Next"),
+    DoneOrBackburner("Already Read & Backburner", "Already Read"),
 }
 
 @Composable
@@ -69,23 +67,27 @@ fun LibraryPage(
     onOpenSettings: () -> Unit,
 ) {
     val isPopupOpen = remember { mutableStateOf(false) }
-    val bottomBar: @Composable () -> Unit = { BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack) {
-        if (isPopupOpen.value) {
-            Popup(
-                alignment = Alignment.BottomCenter,
-                offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
-                onDismissRequest = { isPopupOpen.value = false },
-                properties = PopupProperties()
-            ) {
-                LibrarySettingsPopup(Modifier.padding(16.dp), onOpenSettings)
+    val bottomBar: @Composable () -> Unit = {
+        BiblioBottomBar(pageTitle = "Library", onNavigateBack = onNavigateBack) {
+            Box {
+                if (isPopupOpen.value) {
+                    Popup(
+                        alignment = Alignment.BottomCenter,
+                        offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
+                        onDismissRequest = { isPopupOpen.value = false },
+                        properties = PopupProperties()
+                    ) {
+                        LibrarySettingsPopup(Modifier.padding(16.dp), onOpenSettings)
+                    }
+                }
+                BiblioButton(
+                    style = ButtonStyle.Outline,
+                    icon = PhosphorIcons.Regular.Slidershorizontal,
+                    onClick = { isPopupOpen.value = true }
+                )
             }
         }
-        BiblioButton(
-            style = ButtonStyle.Outline,
-            icon = PhosphorIcons.Regular.Slidershorizontal,
-            onClick = { isPopupOpen.value = true }
-        )
-    } }
+    }
     when(LocalSettings.current.settings.library.view) {
         LibraryView.LIBRARY_VIEW_GRID -> BiblioScaffold(
             modifier = modifier,
@@ -212,7 +214,8 @@ private fun LibraryShelves(
                 )
             }),
         ),
-        minRowHeight = 200.dp,
+        minRowHeight = 156.dp,
+        tryToFill = true,
         bottomBar = { bottomBar() },
     )
 }
@@ -296,15 +299,23 @@ private fun LibrarySection(
                         modifier = modifier
                             .clickable(onClick = onExpandSection)
                             .weight(1f)
-                            .border(1.dp, BiblioTheme.colors.divider, shape = RoundedCornerShape(6.dp))
-                            .background(BiblioTheme.colors.surface, shape = RoundedCornerShape(6.dp))
+                            .border(
+                                1.dp,
+                                BiblioTheme.colors.divider,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .background(
+                                BiblioTheme.colors.surface,
+                                shape = RoundedCornerShape(6.dp)
+                            )
                             .clip(RoundedCornerShape(6.dp)),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         ExactText(
                             text = "+${books.size - visibleBooks.size} more",
                             color = BiblioTheme.colors.onBackgroundSecondary,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier
+                                .padding(8.dp)
                                 .weight(1f)
                                 .rotateWithBounds(90f),
                         )

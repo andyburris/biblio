@@ -6,6 +6,7 @@ option java_multiple_files = true;
 enum SyncApp {
   SYNC_APP_NONE = 0;
   SYNC_APP_MOON_READER = 1;
+  SYNC_APP_KOREADER = 2;
 }
 
 message Settings {
@@ -17,6 +18,7 @@ message Settings {
 message CommonSettings {
   bool show_numbers = 1;
   SyncApp sync_app = 2;
+  bool eink_colors = 3;
 }
 
 message HomeSettings {

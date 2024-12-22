@@ -16,6 +16,7 @@ sealed class BookCover {
     data class Available(
         val image: Bitmap,
         val blurredSpine: Bitmap,
+        val brightenedImage: Bitmap,
         val isDark: Boolean,
     ) : BookCover()
 }
@@ -30,11 +31,13 @@ data class Book(
     val filePaths: List<String>,
 )
 
+const val AlreadyReadProgress = 0.925
 @Serializable
 sealed class BookProgress() {
     abstract val lastOpened: LocalDateTime?
     abstract val addedAt: LocalDateTime
     abstract val timesOpened: Long
+    abstract val markedDone: Boolean
 
     @Serializable data class Progress(
         val percent: Double,
@@ -43,6 +46,7 @@ sealed class BookProgress() {
         override val timesOpened: Long,
         @Serializable(with = LocalDateTimeSerializer::class)
         override val lastOpened: LocalDateTime? = null,
+        override val markedDone: Boolean = false,
         ) : BookProgress()
     @Serializable data class Basic(
         @Serializable(with = LocalDateTimeSerializer::class)
@@ -50,12 +54,48 @@ sealed class BookProgress() {
         override val timesOpened: Long,
         @Serializable(with = LocalDateTimeSerializer::class)
         override val lastOpened: LocalDateTime? = null,
+        override val markedDone: Boolean = false,
         ) : BookProgress()
 
     fun increaseOpened(): BookProgress {
         return when(this) {
-            is Progress -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now())
-            is Basic -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now())
+            is Progress -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now(), markedDone = false)
+            is Basic -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now(), markedDone = false)
+        }
+    }
+
+    fun toUpNext(): BookProgress {
+        return when(this) {
+            is Progress -> copy(
+                percent = 0.0,
+                timesOpened = 0,
+                lastOpened = this.lastOpened,
+                markedDone = false
+            )
+            is Basic -> copy(timesOpened = 0, lastOpened = this.lastOpened, markedDone = false)
+        }
+    }
+
+    fun toCurrentlyReading(): BookProgress {
+        return when(this) {
+            is Progress -> copy(
+                percent = this.percent.coerceAtMost(AlreadyReadProgress - 0.01),
+                timesOpened = this.timesOpened.coerceAtLeast(1),
+                lastOpened = this.lastOpened ?: LocalDateTime.now(),
+                markedDone = false,
+            )
+            is Basic -> copy(
+                timesOpened = this.timesOpened.coerceAtLeast(1),
+                lastOpened = this.lastOpened ?: LocalDateTime.now(),
+                markedDone = false,
+            )
+        }
+    }
+
+    fun toAlreadyRead(): BookProgress {
+        return when(this) {
+            is Progress -> copy(markedDone = true)
+            is Basic -> copy(markedDone = true)
         }
     }
 

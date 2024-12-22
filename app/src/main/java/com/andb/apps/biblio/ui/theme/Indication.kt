@@ -78,4 +78,4 @@ class DarkenIndicationNodeFactory(private val darkenPercent: Float) : Indication
 }
 
 val BlackoutIndication = DarkenIndicationNodeFactory(1f)
-val OverlayIndication = DarkenIndicationNodeFactory(0.1f)
+val OverlayIndication = DarkenIndicationNodeFactory(0.2f)
