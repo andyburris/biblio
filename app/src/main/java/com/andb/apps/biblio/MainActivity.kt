@@ -26,13 +26,15 @@ import androidx.navigation.compose.rememberNavController
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.data.LocalSettings
-import com.andb.apps.biblio.data.LocalSyncServer
-import com.andb.apps.biblio.data.SyncServer
 import com.andb.apps.biblio.data.booksAsState
 import com.andb.apps.biblio.data.rememberSettingsState
 import com.andb.apps.biblio.data.settingsDataStore
+import com.andb.apps.biblio.data.sync.LocalWebDavServer
+import com.andb.apps.biblio.data.sync.WebDavServer
+import com.andb.apps.biblio.data.walkFileFlow
 import com.andb.apps.biblio.ui.apps.AppsPage
 import com.andb.apps.biblio.ui.apps.rememberAppsAsState
+import com.andb.apps.biblio.ui.asStateFlow
 import com.andb.apps.biblio.ui.home.HomePage
 import com.andb.apps.biblio.ui.home.rememberStoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryPage
@@ -41,14 +43,17 @@ import com.andb.apps.biblio.ui.library.ShelfPage
 import com.andb.apps.biblio.ui.settings.SettingsPage
 import com.andb.apps.biblio.ui.test.TestPage
 import com.andb.apps.biblio.ui.theme.BiblioTheme
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.map
+import java.io.File
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var server: SyncServer
+    private lateinit var server: WebDavServer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        server = SyncServer(
+        server = WebDavServer(
             getExternalFilesDir(null)!!,
 //            "172.25.240.1"
 //            "localhost",
@@ -62,20 +67,23 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val storagePermissionState = rememberStoragePermissionState()
             val settings = context.settingsDataStore.rememberSettingsState()
-            val bookRepository = remember { BookRepository(context, coroutineScope, server) }
+            val allFilesFlow: SharedFlow<Result<List<File>>> = coroutineScope.walkFileFlow(context = context)
+            val syncAppFlow = settings.asStateFlow()
+                .map { it.common.syncState.value.app }
 
-            LaunchedEffect(settings.common.syncState) {
-                if(settings.common.syncState.isActivated == true && !server.isAlive) {
-                    server.start()
-                } else if (settings.common.syncState.isActivated != true && server.isAlive) {
-                    server.stop()
+            LaunchedEffect(settings.value.common.syncState.value.app) {
+                when(settings.value.common.syncState.value.app) {
+                    SyncApp.SYNC_APP_MOON_READER -> server.tryStart()
+                    else -> server.stop()
                 }
             }
+
+            val bookRepository = remember { BookRepository(context, coroutineScope, allFilesFlow, syncAppFlow) }
 
             val appsState = rememberAppsAsState()
             val booksState = bookRepository.booksAsState(storagePermissionState)
 
-            CompositionLocalProvider(LocalSettings provides settings, LocalSyncServer provides server) {
+            CompositionLocalProvider(LocalSettings provides settings.value, LocalWebDavServer provides server ) {
                 BiblioTheme {
                     NavHost(
                         navController = navController,

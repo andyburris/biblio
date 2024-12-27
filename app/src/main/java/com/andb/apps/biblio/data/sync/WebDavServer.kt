@@ -1,12 +1,8 @@
-package com.andb.apps.biblio.data
+package com.andb.apps.biblio.data.sync
 
 import androidx.compose.runtime.compositionLocalOf
-import com.andb.apps.biblio.SavedBook
-import com.andb.apps.biblio.SyncApp
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import org.nanohttpd.protocols.http.IHTTPSession
 import org.nanohttpd.protocols.http.NanoHTTPD
 import org.nanohttpd.protocols.http.request.Method
@@ -22,9 +18,9 @@ import java.io.IOException
 import kotlin.io.path.Path
 import kotlin.io.path.createParentDirectories
 
-val LocalSyncServer = compositionLocalOf { SyncServer(File(""), port = 1) }
+val LocalWebDavServer = compositionLocalOf { WebDavServer(File(""), port = 1) }
 
-class SyncServer(
+class WebDavServer(
     private val directory: File,
     hostname: String = "127.0.0.1",
     port: Int = 8080,
@@ -32,6 +28,14 @@ class SyncServer(
     private val mutableFileFlow = MutableStateFlow((directory to false))
     val urlFlow = MutableStateFlow("http://$hostname:$listeningPort/")
     val fileFlow: StateFlow<Pair<File, Boolean>> = mutableFileFlow
+
+    fun tryStart() {
+        try {
+            this.start()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
 
     override fun start() {
         super.start()
@@ -154,30 +158,6 @@ class SyncServer(
             newFixedLengthResponse(Status.CREATED, MIME_PLAINTEXT, "Collection created")
         } else {
             newFixedLengthResponse(Status.CONFLICT, MIME_PLAINTEXT, "Could not create collection")
-        }
-    }
-}
-
-
-fun Flow<Pair<File, Boolean>>.toProgressFileFlow() = this.map { (file, _) ->
-    file.walkTopDown().filter { it.extension == "po" }.toList()
-}
-
-fun SavedBook.getProgressFor(
-    progressFiles: List<File>,
-    app: SyncApp = SyncApp.SYNC_APP_MOON_READER,
-): BookProgress {
-    val matchingProgress = progressFiles.find { progressFile ->
-        this.filePaths.any { bookFile -> progressFile.nameWithoutExtension == bookFile.takeLastWhile { it != '/' } }
-    }
-    return when(matchingProgress){
-        null -> this.progress
-        else -> when(app) {
-            SyncApp.SYNC_APP_MOON_READER -> {
-                val percent = matchingProgress.readText().takeLastWhile { it != ':' }.dropLast(1).toDouble() / 100
-                this.progress.withProgress(percent)
-            }
-            else -> this.progress
         }
     }
 }

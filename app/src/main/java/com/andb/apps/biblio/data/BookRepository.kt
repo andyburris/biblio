@@ -3,17 +3,17 @@ package com.andb.apps.biblio.data
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.os.Environment
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.FileProvider
 import app.cash.sqldelight.coroutines.asFlow
 import com.andb.apps.biblio.BuildConfig
 import com.andb.apps.biblio.SavedBook
+import com.andb.apps.biblio.SyncApp
 import com.andb.apps.biblio.ui.home.ReadiumUtils
 import com.andb.apps.biblio.ui.home.StoragePermissionState
 import com.andb.apps.biblio.ui.library.LibraryShelf
@@ -21,11 +21,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.combineTransform
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import org.readium.r2.shared.publication.Contributor
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.cover
@@ -35,74 +37,102 @@ import java.io.File
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.time.Duration.Companion.days
-import kotlin.time.measureTimedValue
 import kotlin.time.toJavaDuration
 
 
 val ACCEPTED_EXTENSIONS = listOf("epub")
-val ROOT_DIR: String = Environment.getExternalStorageDirectory().absolutePath
-val ANDROID_DIR = File("$ROOT_DIR/Android")
-val DATA_DIR = File("$ROOT_DIR/data")
 
 class BookRepository(
     private val context: Context,
     private val coroutineScope: CoroutineScope,
-    private val syncServer: SyncServer,
+    private val allFilesFlow: SharedFlow<Result<List<File>>>,
+    private val syncAppFlow: Flow<SyncApp>,
 ) {
     private val readium = ReadiumUtils(context)
     private val database = createDatabase(context)
     private val coverStorage = CoverStorage(context)
 
-    private val progressFileFlow = syncServer.fileFlow.toProgressFileFlow()
+    private val databaseBookFlow = database.savedBookQueries
+        .selectAll()
+        .asFlow()
+        .map { query -> query.executeAsList() }
 
-    fun getBooks(): Flow<List<Book>> {
-        val flow = database.savedBookQueries
-            .selectAll()
-            .asFlow()
-            .map { query -> query.executeAsList() }
-            .combine(progressFileFlow) { a, b -> a to b }
-            .map { (books, progressFiles) ->
-                books.map { book ->
-                    Book(
-                        id = book.id,
-                        identifier = book.identifier,
-                        title = book.title,
-                        authors = book.authors,
-                        cover = coverStorage.getCover(book.id),
-                        progress = book.getProgressFor(progressFiles),
-                        length = book.length?.toInt(),
-                        filePaths = book.filePaths,
-                    )
+    private val getProgressFlow = allFilesFlow.combine(syncAppFlow) { result, syncApp ->
+        return@combine { book: SavedBook ->
+            when(syncApp) {
+                SyncApp.SYNC_APP_KOREADER -> {
+                    val progressFiles = result
+                        .getOrElse { emptyList() }
+                        .filter { it.name == "metadata.epub.lua" }
+//                    println("syncing from koreader, progressFiles = ${progressFiles.map { it.path }}")
+                    val bookMetadataFolderNames = book.filePaths.map { bookFile ->
+                        val bookFileNoExtension = bookFile
+                            .takeLastWhile { it != '/' }
+                            .dropLastWhile { it != '.' }
+                            .dropLast(1)
+                        "${bookFileNoExtension}.sdr"
+                    }
+                    val matchingProgress = progressFiles.find { it.parentFile?.name in bookMetadataFolderNames }
+//                    println("found progress file for ${bookMetadataFolderNames}: $matchingProgress")
+                    if (matchingProgress != null) {
+                        val progress = matchingProgress
+                            .readText()
+                            .replaceBefore("[\"percent_finished\"] = ", "")
+                            .removePrefix("[\"percent_finished\"] = ")
+                            .replaceAfter(",", "")
+                            .removeSuffix(",")
+                            .toDoubleOrNull()
+                        if (progress != null) book.progress.withProgress(progress) else book.progress
+                    } else {
+                        book.progress
+                    }
                 }
+                SyncApp.SYNC_APP_MOON_READER -> {
+                    val progressFiles = result
+                        .getOrElse { emptyList() }
+                        .filter { it.extension == "po" }
+//                    println("syncing from moon+ reader, progressFiles = ${progressFiles.map { it.path }}")
+                    val matchingProgress = progressFiles.find { progressFile ->
+                        book.filePaths.any { bookFile -> progressFile.nameWithoutExtension == bookFile.takeLastWhile { it != '/' } }
+                    }
+                    when(matchingProgress){
+                        null -> book.progress
+                        else -> {
+                            val percent = matchingProgress.readText().takeLastWhile { it != ':' }.dropLast(1).toDouble() / 100
+                            book.progress.withProgress(percent)
+                        }
+                    }
+                }
+                SyncApp.SYNC_APP_NONE, SyncApp.UNRECOGNIZED -> book.progress
             }
-
-        return flow
-    }
-
-    private fun getFilesFromStorage(): List<File> {
-        val root = File(ROOT_DIR)
-        val (files, duration) = measureTimedValue {
-            root.walk()
-                // before entering this dir check if
-                .onEnter {
-                    !it.isHidden // it is not hidden
-                            && it != ANDROID_DIR // it is not Android directory
-                            && it != DATA_DIR // it is not data directory
-                            && !File(it, ".nomedia").exists() // there is no .nomedia file inside
-                }.filter { ACCEPTED_EXTENSIONS.contains(it.extension) } // it is of accepted type
-                .toList()
         }
-        println("took $duration to get files, found ${files.size} files")
-        return files
+    }.onStart { emit { book -> book.progress } }
+
+    val savingPublicationsFlow = combineTransform(
+        allFilesFlow
+            .map { r -> r.getOrElse { emptyList() }.filter { it.extension in ACCEPTED_EXTENSIONS } },
+        databaseBookFlow,
+        getProgressFlow,
+    ) { files, savedBooks, getProgress ->
+        emit(true)
+        refreshPublicationsFromStorage(files, savedBooks, getProgress)
+        updateProgressInDatabase(savedBooks, getProgress)
+        emit(false)
     }
 
-    suspend fun refreshPublicationsFromStorage(existingBooks: List<Book>) {
-        val files = getFilesFromStorage()
+    val fullBooks = databaseBookFlow.map { books ->
+        books.map { book -> book.toBook(cover = coverStorage.getCover(book.id)) }
+    }
 
+    suspend fun refreshPublicationsFromStorage(
+        files: List<File>,
+        existingBooks: List<SavedBook>,
+        getProgress: (SavedBook) -> BookProgress,
+    ) {
         val existingPaths = existingBooks.flatMap { it.filePaths }
-        val updatedPaths = files.map { it.path }
+        val currentPaths = files.map { it.path }
         val newFiles = files.filter { it.path !in existingPaths }
-        val deletedBooks = existingBooks.filter { book -> book.filePaths.none { it in updatedPaths } }
+        val deletedBooks = existingBooks.filter { book -> book.filePaths.none { it in currentPaths } }
 
         if (newFiles.isEmpty() && deletedBooks.isEmpty()) return
 
@@ -147,7 +177,7 @@ class BookRepository(
                 progress = BookProgress.Basic(addedAt = LocalDateTime.now(), timesOpened = 0L),
                 length = (pub.metadata.numberOfPages ?: pub.locateProgression(1.0)?.locations?.position)?.toLong(),
                 filePaths = files.map{ it.path },
-            )
+            ).let { it.copy(progress = getProgress(it)) }
         }
         loadedBooks.zip(savedBooks).map { (pub, book) ->
             coroutineScope.async(Dispatchers.IO) {
@@ -173,6 +203,13 @@ class BookRepository(
         }
     }
 
+    suspend fun updateProgressInDatabase(books: List<SavedBook>, getProgress: (SavedBook) -> BookProgress) {
+        val withUpdatedProgress = books.filter { book -> book.progress != getProgress(book) }
+        withUpdatedProgress.forEach {
+            database.savedBookQueries.updateProgress(getProgress(it), it.id)
+        }
+    }
+
     fun openBook(book: Book) {
         val file = File(book.filePaths.first())
         val providerAuthority = "${BuildConfig.APPLICATION_ID}.provider"
@@ -183,7 +220,6 @@ class BookRepository(
                 it.setDataAndType(uri, mime)
                 it.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
-
 
         database.savedBookQueries.updateProgress(book.progress.increaseOpened(), book.id)
 
@@ -227,46 +263,18 @@ fun BookRepository.booksAsState(
     permissionState: StoragePermissionState,
 ): State<BooksState> {
     val isFirstLoad = remember { mutableStateOf(true) }
-    val allBooks = remember { mutableStateOf<BooksState>(BooksState.Loading) }
-
-    LaunchedEffect(permissionState) {
-        when(permissionState.isGranted) {
-            true -> {
-                allBooks.value = BooksState.Loading
-                getBooks().collect { books ->
-                    allBooks.value = books.categorize()
-                }
-            }
-            false -> allBooks.value = BooksState.NoPermission
+    rememberCoroutineScope().launch {
+        savingPublicationsFlow.collect {
+            if (permissionState.isGranted) isFirstLoad.value = false
         }
     }
-
-    LaunchedEffect(permissionState) {
-        withContext(Dispatchers.IO) {
-            while(true){
-                when (val existingBooks = allBooks.value) {
-                    is BooksState.Loaded -> {
-                        refreshPublicationsFromStorage(existingBooks.allBooks)
-                        isFirstLoad.value = false
-                        delay(10000)
-                    }
-                    else -> {
-                        delay(500)
-                    }
-                }
-            }
+    return fullBooks.map { books ->
+        when {
+            !permissionState.isGranted -> BooksState.NoPermission
+            isFirstLoad.value && books.isEmpty() -> BooksState.Loading
+            else -> books.categorize()
         }
-    }
-
-    return remember {
-        derivedStateOf {
-            val isStillLoading = isFirstLoad.value && allBooks.value.let { it is BooksState.Loaded && it.allBooks.isEmpty() }
-            when {
-                isStillLoading -> BooksState.Loading
-                else -> allBooks.value
-            }
-        }
-    }
+    }.collectAsState(initial = BooksState.Loading)
 }
 
 private val backburnerTime = 90.days
@@ -279,24 +287,33 @@ private fun List<Book>.categorize(): BooksState.Loaded {
             val beforeBackburnerTime = book.progress.lastOpened?.isBefore(LocalDateTime.now().minus(backburnerTime.toJavaDuration())) ?: false
             when(book.progress) {
                 is BookProgress.Progress -> {
-                    val progress = book.progress.percent
-                    when {
-                        progress >= AlreadyReadProgress || beforeBackburnerTime || book.progress.markedDone ->
-                            Triple(currentlyReading, unread, (doneOrBackburner + book))
-                        progress == 0.0 || book.progress.lastOpened == null || book.progress.timesOpened == 0L  ->
-                            Triple(currentlyReading, (unread + book), doneOrBackburner)
-                        else ->
-                            Triple((currentlyReading + book), unread, doneOrBackburner)
+                    when(book.progress.markedAs) {
+                        LibraryShelf.CurrentlyReading -> Triple((currentlyReading + book), unread, doneOrBackburner)
+                        LibraryShelf.UpNext -> Triple(currentlyReading, (unread + book), doneOrBackburner)
+                        LibraryShelf.DoneOrBackburner -> Triple(currentlyReading, unread, (doneOrBackburner + book))
+                        null -> when {
+                            book.progress.percent >= AlreadyReadProgress || beforeBackburnerTime ->
+                                Triple(currentlyReading, unread, (doneOrBackburner + book))
+                            book.progress.percent == 0.0 ->
+                                Triple(currentlyReading, (unread + book), doneOrBackburner)
+                            else ->
+                                Triple((currentlyReading + book), unread, doneOrBackburner)
+                        }
                     }
                 }
                 is BookProgress.Basic -> {
-                    when {
-                        beforeBackburnerTime || book.progress.markedDone ->
-                            Triple(currentlyReading, unread, (doneOrBackburner + book))
-                        book.progress.lastOpened == null || book.progress.timesOpened == 0L  ->
-                            Triple(currentlyReading, (unread + book), doneOrBackburner)
-                        else ->
-                            Triple((currentlyReading + book), unread, doneOrBackburner)
+                    when(book.progress.markedAs) {
+                        LibraryShelf.CurrentlyReading -> Triple((currentlyReading + book), unread, doneOrBackburner)
+                        LibraryShelf.UpNext -> Triple(currentlyReading, (unread + book), doneOrBackburner)
+                        LibraryShelf.DoneOrBackburner -> Triple(currentlyReading, unread, (doneOrBackburner + book))
+                        null -> when {
+                            beforeBackburnerTime ->
+                                Triple(currentlyReading, unread, (doneOrBackburner + book))
+                            book.progress.lastOpened == null || book.progress.timesOpened == 0L  ->
+                                Triple(currentlyReading, (unread + book), doneOrBackburner)
+                            else ->
+                                Triple((currentlyReading + book), unread, doneOrBackburner)
+                        }
                     }
                 }
             }

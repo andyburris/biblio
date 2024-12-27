@@ -46,7 +46,7 @@ import kotlin.math.roundToInt
 
 
 const val DefaultBookAspectRatio = (256 / 384.0f)
-const val DefaultPageLength = 300
+const val DefaultPageLength = 300L
 
 enum class BookItemSize {
     Small, Medium, Large

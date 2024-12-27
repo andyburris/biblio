@@ -1,6 +1,8 @@
 package com.andb.apps.biblio.data
 
 import android.graphics.Bitmap
+import com.andb.apps.biblio.SavedBook
+import com.andb.apps.biblio.ui.library.LibraryShelf
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -27,8 +29,29 @@ data class Book(
     val authors: List<Contributor>,
     val cover: BookCover,
     val progress: BookProgress,
-    val length: Int?,
+    val length: Long?,
     val filePaths: List<String>,
+)
+
+fun SavedBook.toBook(cover: BookCover) = Book(
+    id = id,
+    identifier = identifier,
+    title = title,
+    authors = authors,
+    cover = cover,
+    progress = progress,
+    length = length,
+    filePaths = filePaths
+)
+
+fun Book.toSavedBook() = SavedBook(
+    id = id,
+    identifier = identifier,
+    title = title,
+    authors = authors,
+    progress = progress,
+    length = length,
+    filePaths = filePaths
 )
 
 const val AlreadyReadProgress = 0.925
@@ -37,7 +60,7 @@ sealed class BookProgress() {
     abstract val lastOpened: LocalDateTime?
     abstract val addedAt: LocalDateTime
     abstract val timesOpened: Long
-    abstract val markedDone: Boolean
+    abstract val markedAs: LibraryShelf?
 
     @Serializable data class Progress(
         val percent: Double,
@@ -46,7 +69,7 @@ sealed class BookProgress() {
         override val timesOpened: Long,
         @Serializable(with = LocalDateTimeSerializer::class)
         override val lastOpened: LocalDateTime? = null,
-        override val markedDone: Boolean = false,
+        override val markedAs: LibraryShelf? = null,
         ) : BookProgress()
     @Serializable data class Basic(
         @Serializable(with = LocalDateTimeSerializer::class)
@@ -54,48 +77,42 @@ sealed class BookProgress() {
         override val timesOpened: Long,
         @Serializable(with = LocalDateTimeSerializer::class)
         override val lastOpened: LocalDateTime? = null,
-        override val markedDone: Boolean = false,
+        override val markedAs: LibraryShelf? = null,
         ) : BookProgress()
 
     fun increaseOpened(): BookProgress {
         return when(this) {
-            is Progress -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now(), markedDone = false)
-            is Basic -> copy(timesOpened = timesOpened + 1, lastOpened = LocalDateTime.now(), markedDone = false)
+            is Progress -> copy(
+                timesOpened = timesOpened + 1,
+                lastOpened = LocalDateTime.now(),
+                markedAs = null
+            )
+            is Basic -> copy(
+                timesOpened = timesOpened + 1,
+                lastOpened = LocalDateTime.now(),
+                markedAs = null
+            )
         }
     }
 
     fun toUpNext(): BookProgress {
         return when(this) {
-            is Progress -> copy(
-                percent = 0.0,
-                timesOpened = 0,
-                lastOpened = this.lastOpened,
-                markedDone = false
-            )
-            is Basic -> copy(timesOpened = 0, lastOpened = this.lastOpened, markedDone = false)
+            is Progress -> copy(markedAs = LibraryShelf.UpNext)
+            is Basic -> copy(markedAs = LibraryShelf.UpNext)
         }
     }
 
     fun toCurrentlyReading(): BookProgress {
         return when(this) {
-            is Progress -> copy(
-                percent = this.percent.coerceAtMost(AlreadyReadProgress - 0.01),
-                timesOpened = this.timesOpened.coerceAtLeast(1),
-                lastOpened = this.lastOpened ?: LocalDateTime.now(),
-                markedDone = false,
-            )
-            is Basic -> copy(
-                timesOpened = this.timesOpened.coerceAtLeast(1),
-                lastOpened = this.lastOpened ?: LocalDateTime.now(),
-                markedDone = false,
-            )
+            is Progress -> copy(markedAs = LibraryShelf.CurrentlyReading)
+            is Basic -> copy(markedAs = LibraryShelf.CurrentlyReading)
         }
     }
 
     fun toAlreadyRead(): BookProgress {
         return when(this) {
-            is Progress -> copy(markedDone = true)
-            is Basic -> copy(markedDone = true)
+            is Progress -> copy(markedAs = LibraryShelf.DoneOrBackburner)
+            is Basic -> copy(markedAs = LibraryShelf.DoneOrBackburner)
         }
     }
 

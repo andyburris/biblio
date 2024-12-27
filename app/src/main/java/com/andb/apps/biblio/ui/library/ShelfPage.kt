@@ -36,7 +36,7 @@ import com.andb.apps.biblio.ui.home.DefaultPageLength
 import com.andb.apps.biblio.ui.theme.BiblioTheme
 
 fun Book.spineWidthDp(multiplier: Double = 1.0): Dp {
-    return (((0.1 * multiplier).dp) * (length ?: DefaultPageLength)).coerceIn(24.dp..128.dp) + 4.dp
+    return (((0.1 * multiplier).dp) * (length ?: DefaultPageLength).toInt()).coerceIn(24.dp..128.dp) + 4.dp
 }
 
 @Composable

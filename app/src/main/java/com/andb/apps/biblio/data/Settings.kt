@@ -2,8 +2,10 @@ package com.andb.apps.biblio.data
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.datastore.core.CorruptionException
@@ -83,7 +85,7 @@ data class SettingsState(
             onToggle = { update(!value) }
         ),
         syncState = SettingState(
-            name = "Sync with reader app",
+            name = "Sync progress with reader app",
             value = SyncInfo(settings.common.syncApp, "biblio", "a378d4"),
             onUpdate = {
                 onUpdateSettings { currentSettings ->
@@ -98,7 +100,7 @@ data class SettingsState(
             isActivated = settings.common.syncApp != SyncApp.SYNC_APP_NONE,
             icon = PhosphorIcons.Regular.Arrowsclockwise,
             valueToDescription = { when(it.app) {
-                SyncApp.SYNC_APP_MOON_READER -> "Moon Reader"
+                SyncApp.SYNC_APP_MOON_READER -> "Moon+ Reader"
                 SyncApp.SYNC_APP_KOREADER -> "KOReader"
                 else -> "None"
             } }
@@ -172,12 +174,14 @@ data class SettingsState(
 }
 
 @Composable
-fun DataStore<Settings>.rememberSettingsState(): SettingsState {
+fun DataStore<Settings>.rememberSettingsState(): State<SettingsState> {
     val currentSettings: Settings = this.data.collectAsState(Settings.getDefaultInstance()).value
     val settingsState = remember(currentSettings) {
-        SettingsState(currentSettings) { transform ->
-            this.updateData { currentSettings ->
-                transform(currentSettings)
+        derivedStateOf {
+            SettingsState(currentSettings) { transform ->
+                this.updateData { currentSettings ->
+                    transform(currentSettings)
+                }
             }
         }
     }
