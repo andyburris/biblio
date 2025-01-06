@@ -4,7 +4,6 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.adamglin.PhosphorIcons
@@ -19,6 +18,8 @@ import com.adamglin.phosphoricons.regular.Sundim
 import com.adamglin.phosphoricons.regular.Sunhorizon
 import com.adamglin.phosphoricons.regular.Textaa
 import com.andb.apps.biblio.data.LocalSettings
+import com.andb.apps.biblio.ui.apps.AppsState
+import com.andb.apps.biblio.ui.apps.rememberAppsAsState
 import com.andb.apps.biblio.ui.settings.SettingsPopup
 import com.andb.apps.biblio.ui.settings.SettingsPopupHeader
 import com.andb.apps.biblio.ui.settings.SettingsPopupItem
@@ -29,6 +30,7 @@ import com.andb.apps.biblio.ui.settings.SettingsSegmentItem
 fun HomeSettingsPopup(
     modifier: Modifier = Modifier,
     onOpenSettingsScreen: () -> Unit,
+    onOpenPinnedEdit: () -> Unit,
 ) {
     val context = LocalContext.current
     val settings = LocalSettings.current
@@ -112,16 +114,24 @@ fun HomeSettingsPopup(
                 onMore = { onOpenSettingsScreen()},
             )
         }
-        item { SettingsPopupItem(
-            title = "Pinned Apps",
-            icon = PhosphorIcons.Regular.Pushpin,
-            isActivated = null,
-            state = when(val pinned = settings.settings.home.pinnedAppsList) {
-                emptyList<String>() -> "None"
-                else -> pinned.joinToString { it }
-            },
-            onMore = {},
-        ) }
+        item {
+            val apps = rememberAppsAsState()
+            SettingsPopupItem(
+                title = "Pinned Apps",
+                icon = PhosphorIcons.Regular.Pushpin,
+                isActivated = null,
+                state = when(val pinned = settings.settings.home.pinnedAppsList) {
+                    emptyList<String>() -> "None"
+                    else -> when(val app = apps.value) {
+                        is AppsState.Loaded -> pinned.joinToString { packageName ->
+                            app.apps.find { it.packageName == packageName }?.name ?: "Unknown"
+                        }
+                        else -> "Loading..."
+                    }
+                },
+                onMore = onOpenPinnedEdit,
+            )
+        }
         item { SettingsPopupItem(settingState = settings.common.showNumbers) }
     }
 }

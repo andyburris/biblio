@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,7 +42,7 @@ import java.text.SimpleDateFormat
 fun HomePage(
     booksState: BooksState,
     modifier: Modifier = Modifier,
-    onNavigateToApps: () -> Unit,
+    onNavigateToApps: (editMode: Boolean) -> Unit,
     onNavigateToLibrary: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onRequestStoragePermission: () -> Unit,
@@ -155,10 +154,10 @@ fun HomePage(
 @Composable
 private fun HomeBottomBar(
     modifier: Modifier = Modifier,
-    onNavigateToApps: () -> Unit,
+    onNavigateToApps: (editMode: Boolean) -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
-    val isPopupOpen = remember { mutableStateOf(false) }
+    val isSettingsPopupOpen = remember { mutableStateOf(false) }
 
     Row(
         modifier = modifier
@@ -176,7 +175,7 @@ private fun HomeBottomBar(
         val batteryState = currentBatteryAsState()
         val wifiState = wifiSignalAsState()
         BiblioButton(
-            onClick = { isPopupOpen.value = true },
+            onClick = { isSettingsPopupOpen.value = true },
             style = ButtonStyle.Outline,
         ) {
             Icon(
@@ -200,26 +199,32 @@ private fun HomeBottomBar(
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        BiblioButton(
-            onClick = onNavigateToApps,
-            style = ButtonStyle.Outline,
-            text = "Apps",
-            icon = PhosphorIcons.Regular.Squaresfour
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.weight(1f),
+        ) {
+            PinnedAppsRow(modifier = Modifier.weight(1f))
+            BiblioButton(
+                onClick = { onNavigateToApps(false) },
+                style = ButtonStyle.Outline,
+                text = "Apps",
+                icon = PhosphorIcons.Regular.Squaresfour
+            )
+        }
     }
 
-    if (isPopupOpen.value) {
+    if (isSettingsPopupOpen.value) {
         Popup(
             alignment = Alignment.BottomCenter,
             offset = IntOffset(0, with(LocalDensity.current) { -48.dp.roundToPx() }),
-            onDismissRequest = { isPopupOpen.value = false },
+            onDismissRequest = { isSettingsPopupOpen.value = false },
             properties = PopupProperties()
         ) {
             HomeSettingsPopup(
                 modifier = Modifier.padding(16.dp),
                 onOpenSettingsScreen = onNavigateToSettings,
+                onOpenPinnedEdit = { onNavigateToApps(true) },
             )
         }
     }

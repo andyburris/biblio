@@ -108,7 +108,7 @@ private fun BookItem(
     val spineWidth = ((pages * spineWidthMultiplier) + 2.0).dp + spineInsetMargin
     val cover = when {
         itemInfo is BookItemInfo.Pub && itemInfo.publication.cover is BookCover.Available -> itemInfo.publication.cover
-        else -> null
+        else -> BookCover.Unavailable
     }
 
     Row(
@@ -125,11 +125,11 @@ private fun BookItem(
             .clip(RoundedCornerShape(bottomStart = 12.dp, topStart = spineInsetMargin))
 
         when(cover) {
-            null -> Box(
+            BookCover.Unavailable -> Box(
                 spineModifier
                     .background(BiblioTheme.colors.onBackgroundTertiary)
             )
-            else -> Image(
+            is BookCover.Available -> Image(
                 bitmap = cover.blurredSpine.asImageBitmap(),
                 contentDescription = "Cover image",
                 modifier = spineModifier,
@@ -225,13 +225,13 @@ private fun BookItem(
                 bottomEnd = spineInsetMargin * 2,
             ))
             when(cover) {
-                null -> TextCover(
+                BookCover.Unavailable -> TextCover(
                     itemInfo = itemInfo,
                     size = size,
                     height = height,
                     modifier = coverModifier,
                 )
-                else -> ImageCover(
+                is BookCover.Available -> ImageCover(
                     cover = cover,
                     publication = (itemInfo as BookItemInfo.Pub).publication,
                     height = height,

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
@@ -94,6 +95,7 @@ fun SettingsPopupItem(
                     text = state,
                     color = BiblioTheme.colors.onBackgroundSecondary,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -228,7 +230,8 @@ fun SettingsPageItem(
             ) {
                 ExactText(
                     text = title,
-                    maxLines = 1,
+                    maxLines = if (state == null) 2 else 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if(state != null) {
                     ExactText(

@@ -23,10 +23,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.combineTransform
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import org.readium.r2.shared.publication.Contributor
 import org.readium.r2.shared.publication.Publication
@@ -108,33 +112,54 @@ class BookRepository(
         }
     }.onStart { emit { book -> book.progress } }
 
-    val savingPublicationsFlow = combineTransform(
-        allFilesFlow
-            .map { r -> r.getOrElse { emptyList() }.filter { it.extension in ACCEPTED_EXTENSIONS } },
+    private val bookFilesFlow: Flow<List<File>> = allFilesFlow
+        .map { r -> r.getOrElse { emptyList() }.filter { it.extension in ACCEPTED_EXTENSIONS } }
+
+    val savingPublicationsFlow = combine(
+        bookFilesFlow,
         databaseBookFlow,
         getProgressFlow,
     ) { files, savedBooks, getProgress ->
+        Triple(files, savedBooks, getProgress)
+    }.mapLatest { (files, savedBooks, getProgress) ->
+        getNewPublicationsFromStorage(files, savedBooks) to getProgress
+    }.transformLatest { (storagePublications, getProgress) ->
         emit(true)
-        refreshPublicationsFromStorage(files, savedBooks, getProgress)
-        updateProgressInDatabase(savedBooks, getProgress)
+        updateBooksInDatabase(storagePublications, getProgress)
+        emit(false)
+    }.shareIn(coroutineScope, SharingStarted.Lazily, 1)
+
+    val updateProgressFlow = combineTransform(
+        databaseBookFlow,
+        getProgressFlow,
+    ) { books, getProgress ->
+        emit(true)
+        updateProgressInDatabase(books, getProgress)
         emit(false)
     }
+
+    val syncingWithDatabaseFlow = combine(
+        savingPublicationsFlow,
+        updateProgressFlow,
+    ) { saving, updating -> saving || updating }
 
     val fullBooks = databaseBookFlow.map { books ->
         books.map { book -> book.toBook(cover = coverStorage.getCover(book.id)) }
     }
 
-    suspend fun refreshPublicationsFromStorage(
+    private data class StoragePublications(
+        val newPublicationFiles: List<Pair<Publication, File>>,
+        val deletedBooks: List<SavedBook>,
+    )
+    private suspend fun getNewPublicationsFromStorage(
         files: List<File>,
         existingBooks: List<SavedBook>,
-        getProgress: (SavedBook) -> BookProgress,
-    ) {
+    ): StoragePublications {
+        println("getting publications from storage with ${existingBooks.size} existing books")
         val existingPaths = existingBooks.flatMap { it.filePaths }
         val currentPaths = files.map { it.path }
         val newFiles = files.filter { it.path !in existingPaths }
         val deletedBooks = existingBooks.filter { book -> book.filePaths.none { it in currentPaths } }
-
-        if (newFiles.isEmpty() && deletedBooks.isEmpty()) return
 
         val loadedBooks = newFiles
             .map { file ->
@@ -153,6 +178,17 @@ class BookRepository(
             }
             .awaitAll()
             .filterNotNull()
+
+        println("done getting ${loadedBooks.size} publications from storage")
+        return StoragePublications(loadedBooks, deletedBooks)
+    }
+
+    private suspend fun updateBooksInDatabase(
+        storagePublications: StoragePublications,
+        getProgress: (SavedBook) -> BookProgress,
+    ) {
+        val (newPublications, deletedBooks) = storagePublications
+        val deduplicatedNewPublications = newPublications
             .fold(emptyMap<Pair<String?, List<Contributor>>, Pair<Publication, List<File>>>()) { acc, (pub, file) ->
                 val key = pub.metadata.title to pub.metadata.authors.distinctBy { it.identifier ?: it.name }
                 when(acc.containsKey(key)) {
@@ -167,8 +203,8 @@ class BookRepository(
                 }
             }.values
             .toList()
-
-        val savedBooks: List<SavedBook> = loadedBooks.map { (pub, files) ->
+        println("saving ${deduplicatedNewPublications.size} new pubs to database, deleting ${deletedBooks.size} books")
+        val savedBooks: List<SavedBook> = deduplicatedNewPublications.map { (pub, files) ->
             SavedBook(
                 id = UUID.randomUUID().toString(),
                 identifier = pub.metadata.identifier,
@@ -179,7 +215,7 @@ class BookRepository(
                 filePaths = files.map{ it.path },
             ).let { it.copy(progress = getProgress(it)) }
         }
-        loadedBooks.zip(savedBooks).map { (pub, book) ->
+        deduplicatedNewPublications.zip(savedBooks).map { (pub, book) ->
             coroutineScope.async(Dispatchers.IO) {
                 val cover = pub.first.cover()
                 if (cover != null) coverStorage.saveCover(book, cover)
@@ -201,6 +237,7 @@ class BookRepository(
                 database.savedBookQueries.updateFilePaths(it.filePaths, it.id)
             }
         }
+        println("done saving ${savedBooks.size} publications to database")
     }
 
     suspend fun updateProgressInDatabase(books: List<SavedBook>, getProgress: (SavedBook) -> BookProgress) {
@@ -264,7 +301,7 @@ fun BookRepository.booksAsState(
 ): State<BooksState> {
     val isFirstLoad = remember { mutableStateOf(true) }
     rememberCoroutineScope().launch {
-        savingPublicationsFlow.collect {
+        syncingWithDatabaseFlow.collect {
             if (permissionState.isGranted) isFirstLoad.value = false
         }
     }

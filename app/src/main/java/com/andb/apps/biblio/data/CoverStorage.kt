@@ -64,7 +64,7 @@ class CoverStorage(
             val spineWidthPixels = (cover.height * spineWidthRatio).toInt().coerceAtLeast(1)
             // println("resizing image before blur: book: ${book.title} length: $bookLength, spineWidthRatio: $spineWidthRatio, coverHeight: ${cover.height} spineWidthPixels: $spineWidthPixels")
             val resized = Bitmap.createScaledBitmap(cover, spineWidthPixels, cover.height, true)
-            val blurred = (0 until 8).fold(resized) { acc, _ ->
+            val blurred = (0 until 4).fold(resized) { acc, _ ->
                 acc.blur(context, 25f)
             }
             blurred.compress(Bitmap.CompressFormat.PNG, 80, spineFos)

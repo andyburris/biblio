@@ -2,7 +2,7 @@
 - [ ] Offline sync with Moon+ Reader Pro
   - [ ] Add auth to sync if still online
 - [x] Add sync with KoReader
-- [ ] Pinned apps
+- [x] Pinned apps
 - [ ] Essential settings
   - [ ] Brightness control
   - [ ] Add Wi-Fi prompt

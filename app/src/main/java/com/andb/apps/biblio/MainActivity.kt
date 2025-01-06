@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.andb.apps.biblio.data.BookRepository
 import com.andb.apps.biblio.data.BooksState
 import com.andb.apps.biblio.data.LocalSettings
@@ -99,7 +100,9 @@ class MainActivity : ComponentActivity() {
                                 HomePage(
                                     booksState = booksState.value,
                                     modifier = Modifier.padding(innerPadding),
-                                    onNavigateToApps = { navController.navigate("apps") },
+                                    onNavigateToApps = {
+                                        navController.navigate("apps")
+                                   },
                                     onNavigateToLibrary = { navController.navigate("library") },
                                     onNavigateToSettings = { navController.navigate("settings") },
                                     onRequestStoragePermission = { storagePermissionState.launchPermissionRequest() },
@@ -107,7 +110,10 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        composable("apps") {
+                        composable(
+                            route = "apps",
+                            arguments = listOf(navArgument("editMode") { defaultValue = false })
+                        ) {
                             Scaffold (
                                 Modifier.fillMaxSize(),
                                 containerColor = BiblioTheme.colors.background,
@@ -181,6 +187,7 @@ class MainActivity : ComponentActivity() {
                             ) { innerPadding ->
                                 TestPage(
                                     modifier = Modifier.padding(innerPadding),
+                                    books = booksState.value,
                                     onNavigateBack = { navController.safePopBackStack() },
                                 )
                             }

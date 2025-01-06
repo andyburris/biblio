@@ -317,7 +317,7 @@ private fun LibrarySection(
                             text = "+${books.size - visibleBooks.size} more",
                             color = BiblioTheme.colors.onBackgroundSecondary,
                             modifier = Modifier
-                                .padding(8.dp)
+                                .padding(vertical = 8.dp)
                                 .weight(1f)
                                 .rotateWithBounds(90f),
                         )
